@@ -23,9 +23,11 @@ import datetime
 import errno
 import mimetypes
 import os
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
+import fasteners
 import pyrogram
 import pyrogram.api
 import pyrogram.api.types
@@ -35,7 +37,6 @@ import whoosh.index
 from slugify import slugify
 
 import tgminer.fulltext
-import tgminer.mutex
 from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
 
 # disable pyrogram licence spam
@@ -67,8 +68,11 @@ class TGMinerClient:
                 raise
 
         self._indexdir = os.path.join(self._data_dir, "indexdir")
+
+        # interprocess lock only
         self._index_lock_path = os.path.join(self._data_dir, "tgminer_mutex")
-        self._index_lock = tgminer.mutex.NamedMutex(self._index_lock_path)
+
+        self._index_lock = threading.Lock()
 
         if not os.path.exists(self._indexdir):
             os.makedirs(self._indexdir)
@@ -239,7 +243,9 @@ class TGMinerClient:
         :type to_user: pyrogram.api.types.User
         :type user: pyrogram.api.types.User
         """
-        with self._index_lock:
+
+        # lock in process and multiprocess lock
+        with self._index_lock, fasteners.InterProcessLock(self._index_lock_path):
             writer = self._index.writer()
 
             username = user.username

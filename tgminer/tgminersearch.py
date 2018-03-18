@@ -21,11 +21,11 @@
 import argparse
 import os.path
 
+import fasteners
 import whoosh.index
 from whoosh.qparser import QueryParser, sys
 
 import tgminer.fulltext
-import tgminer.mutex
 from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
 
 
@@ -53,7 +53,7 @@ def main():
 
     index = whoosh.index.open_dir(os.path.join(config.data_dir, "indexdir"))
 
-    index_lock = tgminer.mutex.NamedMutex(os.path.join(config.data_dir, "tgminer_mutex"))
+    index_lock_path = os.path.join(config.data_dir, "tgminer_mutex")
 
     schema = tgminer.fulltext.LogSchema()
 
@@ -61,7 +61,7 @@ def main():
 
     query = query_parser.parse(args.query)
 
-    with index_lock:
+    with fasteners.InterProcessLock(index_lock_path):
         with index.searcher() as searcher:
             for hit in searcher.search(query, limit=None if args.limit < 1 else args.limit, sortedby="timestamp"):
 
