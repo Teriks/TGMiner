@@ -107,6 +107,6 @@ Install
 
 Clone or download repository.
 
-`sudo python setup.py install`
+``sudo python setup.py install``
 
 Alternatively on Windows, run the command in an admin level command prompt without 'sudo'.

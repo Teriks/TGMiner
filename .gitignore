@@ -70,4 +70,10 @@ ENV/
 docs/build
 
 # Testing Client Config
-config.ini
+config.json
+
+# Test Data Folder
+data
+
+# Test Session File
+.session
