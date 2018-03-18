@@ -1,16 +1,16 @@
 {
-	// your telegram app api credentials
+    /* your telegram app api credentials */
 	"api_key": {
 		"id": "000000",
 		"hash": "00000000000000000000000000000000"
 	},
 
-	// path for archived chat data, media, and fulltext indexes
+	/* path for archived chat data, media, and fulltext indexes */
 	"data_dir": "./data",
 
-	// path for the session authentication file
+	/* path for the session authentication file */
 	"session_path": "./tgminer",
 
-	// print all logged chat messages/updates to stdout
+    /* print all logged chat messages/updates to stdout */
 	"chat_stdout": false
 }
