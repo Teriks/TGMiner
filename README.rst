@@ -39,7 +39,7 @@ Current searchable fields are:
 
 whoosh is used to provide full text search
 
-.. _Whoosh Query Syntax: http://whoosh.readthedocs.io/en/latest/querylang.html
+Query Syntax: http://whoosh.readthedocs.io/en/latest/querylang.html
 
 Query Examples:
 
