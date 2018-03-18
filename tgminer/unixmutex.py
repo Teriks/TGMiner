@@ -53,8 +53,7 @@ class NamedMutex:
                     os.close(fd)
 
     def __enter__(self):
-        if self._fd is None:
-            raise ValueError('This lock is released')
+        self.acquire()
 
         return self
 
