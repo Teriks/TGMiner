@@ -35,6 +35,10 @@ import pyrogram.session
 import sys
 import whoosh.index
 from slugify import slugify
+from pyrogram.crypto import AES
+import pyrogram.api.functions
+import pyrogram.api.errors
+from hashlib import sha256
 
 import tgminer.fulltext
 from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
@@ -48,7 +52,6 @@ class TGMinerClient:
     INTERPROCESS_MUTEX = "tgminer_mutex"
     DIRECT_CHATS_SLUG = "direct_chats"
     CHANNELS_DIR_NAME = "channels"
-
 
     def __init__(self, config):
 
@@ -125,6 +128,175 @@ class TGMinerClient:
 
         return ".none"
 
+    def get_file(self,
+                 file_name,
+                 dc_id,
+                 id=None,
+                 access_hash=None,
+                 volume_id=None,
+                 local_id=None,
+                 secret=None,
+                 version=0,
+                 size=None,
+                 progress=None):
+
+        if dc_id != self._client.dc_id:
+            exported_auth = self._client.send(
+                pyrogram.api.functions.auth.ExportAuthorization(
+                    dc_id=dc_id
+                )
+            )
+
+            session = pyrogram.session.Session(
+                dc_id,
+                self._client.test_mode,
+                self._client.proxy,
+                pyrogram.session.Auth(dc_id, self._client.test_mode, self._client.proxy).create(),
+                self._client.api_key.api_id
+            )
+
+            session.start()
+
+            session.send(
+                pyrogram.api.functions.auth.ImportAuthorization(
+                    id=exported_auth.id,
+                    bytes=exported_auth.bytes
+                )
+            )
+        else:
+            session = pyrogram.session.Session(
+                dc_id,
+                self._client.test_mode,
+                self._client.proxy,
+                self._client.auth_key,
+                self._client.api_key.api_id
+            )
+
+            session.start()
+
+        if volume_id:
+            location = pyrogram.api.types.InputFileLocation(
+                volume_id=volume_id,
+                local_id=local_id,
+                secret=secret
+            )
+        else:
+            location = pyrogram.api.types.InputDocumentFileLocation(
+                id=id,
+                access_hash=access_hash,
+                version=version
+            )
+
+        limit = 1024 * 1024
+        offset = 0
+
+        try:
+            r = session.send(
+                pyrogram.api.functions.upload.GetFile(
+                    location=location,
+                    offset=offset,
+                    limit=limit
+                )
+            )
+
+            if isinstance(r, pyrogram.api.types.upload.File):
+                with open(file_name, "wb") as f:
+                    while True:
+                        chunk = r.bytes
+
+                        if not chunk:
+                            break
+
+                        f.write(chunk)
+                        f.flush()
+                        os.fsync(f.fileno())
+
+                        offset += limit
+
+                        if progress:
+                            progress(min(offset, size), size)
+
+                        r = session.send(
+                            pyrogram.api.functions.upload.GetFile(
+                                location=location,
+                                offset=offset,
+                                limit=limit
+                            )
+                        )
+
+            if isinstance(r, pyrogram.api.types.upload.FileCdnRedirect):
+                cdn_session = pyrogram.session.Session(
+                    r.dc_id,
+                    self._client.test_mode,
+                    self._client.proxy,
+                    pyrogram.session.Auth(r.dc_id, self._client.test_mode, self._client.proxy).create(),
+                    self._client.api_key.api_id,
+                    is_cdn=True
+                )
+
+                cdn_session.start()
+
+                try:
+                    with open(file_name, "wb") as f:
+                        while True:
+                            r2 = cdn_session.send(
+                                pyrogram.functions.upload.GetCdnFile(
+                                    location=location,
+                                    file_token=r.file_token,
+                                    offset=offset,
+                                    limit=limit
+                                )
+                            )
+
+                            if isinstance(r2, pyrogram.api.types.upload.CdnFileReuploadNeeded):
+                                try:
+                                    session.send(
+                                        pyrogram.functions.functions.upload.ReuploadCdnFile(
+                                            file_token=r.file_token,
+                                            request_token=r2.request_token
+                                        )
+                                    )
+                                except pyrogram.api.errors.VolumeLocNotFound:
+                                    break
+                                else:
+                                    continue
+
+                            chunk = r2.bytes
+
+                            decrypted_chunk = AES.ctr_decrypt(
+                                chunk,
+                                r.encryption_key,
+                                r.encryption_iv,
+                                offset
+                            )
+
+                            hashes = session.send(
+                                pyrogram.api.functions.upload.GetCdnFileHashes(
+                                    r.file_token,
+                                    offset
+                                )
+                            )
+
+                            for i, h in enumerate(hashes):
+                                cdn_chunk = decrypted_chunk[h.limit * i: h.limit * (i + 1)]
+                                assert h.hash == sha256(cdn_chunk).digest(), "Invalid CDN hash part {}".format(i)
+
+                            f.write(decrypted_chunk)
+                            f.flush()
+                            os.fsync(f.fileno())
+
+                            offset += limit
+
+                            if progress:
+                                progress(min(offset, size), size)
+
+                            if len(chunk) < limit:
+                                break
+                finally:
+                    cdn_session.stop()
+        finally:
+            session.stop()
+
     def download_media(self, message, file_name=None, progress=None, auto_extension=False):
         """
         :param auto_extension: Auto add file extension
@@ -136,8 +308,6 @@ class TGMinerClient:
             media = message.media
         else:
             media = message
-
-        tmp_file_name = None
 
         if isinstance(media, pyrogram.api.types.MessageMediaDocument):
             document = media.document
@@ -156,7 +326,8 @@ class TGMinerClient:
                 if auto_extension:
                     file_name += extension
 
-                tmp_file_name = self._client.get_file(
+                self.get_file(
+                    file_name,
                     dc_id=document.dc_id,
                     id=document.id,
                     access_hash=document.access_hash,
@@ -176,26 +347,19 @@ class TGMinerClient:
                 if auto_extension:
                     file_name += ".jpg"
 
-                photo_loc = photo.sizes[-1].location
+                photo_large = photo.sizes[-1]
 
-                tmp_file_name = self._client.get_file(
+                photo_loc = photo_large.location
+
+                self.get_file(
+                    file_name,
                     dc_id=photo_loc.dc_id,
                     volume_id=photo_loc.volume_id,
                     local_id=photo_loc.local_id,
                     secret=photo_loc.secret,
-                    size=photo.sizes[-1].size,
+                    size=photo_large,
                     progress=progress
                 )
-
-        try:
-            os.remove(file_name)
-        except OSError:
-            pass
-        finally:
-            try:
-                os.renames("{}".format(tmp_file_name), file_name)
-            except OSError:
-                pass
 
     @staticmethod
     def _get_user_alias(user):
