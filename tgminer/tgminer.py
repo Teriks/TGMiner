@@ -251,7 +251,7 @@ class TGMinerClient:
                             if isinstance(r2, pyrogram.api.types.upload.CdnFileReuploadNeeded):
                                 try:
                                     session.send(
-                                        pyrogram.api.functions.functions.upload.ReuploadCdnFile(
+                                        pyrogram.api.functions.upload.ReuploadCdnFile(
                                             file_token=r.file_token,
                                             request_token=r2.request_token
                                         )
