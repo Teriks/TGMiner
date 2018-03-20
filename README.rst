@@ -5,6 +5,8 @@ TGMiner is a telegram client bot for archiving and logging chat data from direct
 
 It makes all archived chat content searchable via full text indexing with the whoosh library for python.
 
+TGMiner utilizes the **pyrogram** python telegram client library, and **whoosh** for full text search.
+
 This project is experimental and probably barely usable or practical at the moment, currently in proof of concept mode.
 
 Client
@@ -32,12 +34,13 @@ Current searchable fields are:
 * username (posting users @username) - Exact matches only
 * to_alias (receiving users alias) - Exact matches only
 * to_username (receiving users @username) - Exact matches only
+* to_id (Channel ID or User ID) - Exact matches only
 * chat (slugified group chat name) - Exact matches only
 * media (media field, see query examples..) - Stemming Analysis matching
 * timestamp (chat log timestamp) - Exact matches and ranges
 
 
-whoosh is used to provide full text search
+**whoosh** is used to provide full text search
 
 Query Syntax: http://whoosh.readthedocs.io/en/latest/querylang.html
 

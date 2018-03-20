@@ -14,5 +14,8 @@
     "session_path": "./tgminer",
 
     /* print all logged chat messages/updates to stdout */
-    "chat_stdout": false
+    "chat_stdout": false,
+
+    /* timestamp format */
+    "timestamp_format": "({:%Y/%m/%d - %I:%M:%S %p})"
 }

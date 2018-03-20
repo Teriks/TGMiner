@@ -29,4 +29,5 @@ class LogSchema(whoosh.fields.SchemaClass):
     to_alias = whoosh.fields.ID(stored=True)
     message = whoosh.fields.TEXT(analyzer=whoosh.analysis.StemmingAnalyzer(), stored=True)
     chat = whoosh.fields.ID(stored=True)
+    to_id = whoosh.fields.ID(stored=True)
     media = whoosh.fields.TEXT(analyzer=whoosh.analysis.StemmingAnalyzer(), stored=True)

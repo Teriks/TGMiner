@@ -39,14 +39,23 @@ from slugify import slugify
 import tgminer.fulltext
 from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
 
-# disable pyrogram licence spam
+# silence pyrogram message on start
 pyrogram.session.Session.notice_displayed = True
 
 
 class TGMinerClient:
+    INDEX_DIR_NAME = "indexdir"
+    INTERPROCESS_MUTEX = "tgminer_mutex"
+    DIRECT_CHATS_SLUG = "direct_chats"
+    CHANNELS_DIR_NAME = "channels"
+
+
     def __init__(self, config):
 
         session_path_dir = os.path.dirname(config.session_path)
+
+        self._config = config
+
         if session_path_dir != "":
             try:
                 os.makedirs(session_path_dir)
@@ -56,21 +65,20 @@ class TGMinerClient:
 
         self._client = pyrogram.Client(config.session_path, api_key=(config.api_key.id, config.api_key.hash))
 
+        self._client.set_update_handler(self._update_handler)
+
         self._media_download_pool = ThreadPoolExecutor(max_workers=8)
 
-        self._data_dir = config.data_dir
-        self._chat_stdout = config.chat_stdout
-
         try:
-            os.makedirs(self._data_dir)
+            os.makedirs(config.data_dir)
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
 
-        self._indexdir = os.path.join(self._data_dir, "indexdir")
+        self._indexdir = os.path.join(config.data_dir, TGMinerClient.INDEX_DIR_NAME)
 
         # interprocess lock only
-        self._index_lock_path = os.path.join(self._data_dir, "tgminer_mutex")
+        self._index_lock_path = os.path.join(config.data_dir, TGMinerClient.INTERPROCESS_MUTEX)
 
         self._index_lock = threading.Lock()
 
@@ -129,8 +137,6 @@ class TGMinerClient:
         else:
             media = message
 
-        path = media
-
         tmp_file_name = None
 
         if isinstance(media, pyrogram.api.types.MessageMediaDocument):
@@ -147,12 +153,7 @@ class TGMinerClient:
                     else:
                         extension = ".none"
 
-                if not file_name:
-                    file_name = "doc_{}{}".format(
-                        datetime.fromtimestamp(document.date).strftime("%Y-%m-%d_%H-%M-%S"),
-
-                    )
-                elif auto_extension:
+                if auto_extension:
                     file_name += extension
 
                 tmp_file_name = self._client.get_file(
@@ -171,12 +172,8 @@ class TGMinerClient:
                 photo = media
 
             if isinstance(photo, pyrogram.api.types.Photo):
-                if not file_name:
-                    file_name = "photo_{}_{}.jpg".format(
-                        datetime.fromtimestamp(photo.date).strftime("%Y-%m-%d_%H-%M-%S"),
-                        self.client.rnd_id()
-                    )
-                elif auto_extension:
+
+                if auto_extension:
                     file_name += ".jpg"
 
                 photo_loc = photo.sizes[-1].location
@@ -235,9 +232,9 @@ class TGMinerClient:
         else:
             return "None"
 
-    def _write_index_msg(self, user, to_user, media, message, chat):
+    def _write_index_msg(self, user, to_user, media, message, chat_slug, to_id):
         """
-        :type chat: str
+        :type chat_slug: str
         :type message: str
         :type media: str
         :type to_user: pyrogram.api.types.User
@@ -264,12 +261,11 @@ class TGMinerClient:
                                 to_username=to_username, to_alias=to_alias,
                                 media=media, message=message,
                                 timestamp=datetime.datetime.now(),
-                                chat=chat)
+                                chat=chat_slug, to_id=to_id)
             writer.commit()
 
-    @staticmethod
-    def _timestamp():
-        return "{:%d, %b %Y - %I:%M:%S %p}".format(datetime.datetime.now())
+    def _timestamp(self):
+        return self._config.timestamp_format.format(datetime.datetime.now())
 
     def _update_handler(self, client, update, users, chats):
 
@@ -281,17 +277,24 @@ class TGMinerClient:
         if not isinstance(message, pyrogram.api.types.Message):
             return
 
+        is_peer_channel = isinstance(message.to_id, pyrogram.api.types.PeerChannel)
+        is_peer_user = isinstance(message.to_id, pyrogram.api.types.PeerUser)
+
         user = users[message.from_id]
+
         user_name = self._get_log_username(user)
 
-        chat_slug = "direct_chats"
+        chat_slug = TGMinerClient.DIRECT_CHATS_SLUG
+        log_folder = os.path.join(self._config.data_dir, TGMinerClient.DIRECT_CHATS_SLUG)
+        log_name = "log.txt"
+        channel = None
 
-        log_folder = os.path.join(self._data_dir, "direct_chats")
-
-        if isinstance(message.to_id, pyrogram.api.types.PeerChannel):
+        if is_peer_channel:
             channel = chats[message.to_id.channel_id]
             chat_slug = slugify(channel.title)
-            log_folder = os.path.join(self._data_dir, "channels", chat_slug)
+            log_folder = os.path.join(self._config.data_dir, TGMinerClient.CHANNELS_DIR_NAME,
+                                      str(message.to_id.channel_id))
+            log_name = chat_slug + ".log.txt"
 
         try:
             os.makedirs(log_folder)
@@ -299,7 +302,7 @@ class TGMinerClient:
             if e.errno != errno.EEXIST:
                 raise
 
-        log_file = os.path.join(log_folder, "log.txt")
+        log_file = os.path.join(log_folder, log_name)
 
         indexed_media_info = None
 
@@ -335,27 +338,27 @@ class TGMinerClient:
             indexed_message = message.message
             log_entry = "{}: {}".format(user_name, message.message)
 
+        if is_peer_user:
+            to_user = users[message.to_id.user_id]
+        else:
+            to_user = None
+
+        to_id = str(channel.id if channel else message.to_id)
+
+        self._write_index_msg(user, to_user, indexed_media_info, indexed_message, chat_slug, to_id)
+
+        log_entry = "{} chat=\"{}\" to_id=\"{}\"{} | {}".format(self._timestamp(), chat_slug, to_id,
+                                                                " to {}".format(
+                                                                    self._get_log_username(to_user)) if to_user else "",
+                                                                log_entry)
+
+        if self._config.chat_stdout:
+            print(log_entry)
+
         with open(log_file, "a", encoding='utf-8') as fhandle:
-
-            if isinstance(message.to_id, pyrogram.api.types.PeerUser):
-                to_user = users.get(message.to_id.user_id, None)
-            else:
-                to_user = None
-
-            self._write_index_msg(user, to_user, indexed_media_info, indexed_message, chat_slug)
-
-            log_entry = "{} in \"{}\"{} | {}".format(self._timestamp(), chat_slug,
-                                                     " to {}".format(self._get_log_username(to_user)) if to_user else "",
-                                                     log_entry)
-
-            if self._chat_stdout:
-                print(log_entry)
-
             print(log_entry, file=fhandle)
 
     def start(self):
-        self._client.set_update_handler(self._update_handler)
-
         self._client.start()
         self._client.idle()
 

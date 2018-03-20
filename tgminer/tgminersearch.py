@@ -30,7 +30,6 @@ from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
 
 
 def main():
-
     arg_parser = argparse.ArgumentParser()
 
     arg_parser.add_argument("query", help="Query text")
@@ -42,7 +41,7 @@ def main():
 
     args = arg_parser.parse_args()
 
-    config = None  # shut-up intellij highlighted undeclared variable use warning
+    config = None  # hush intellij highlighted undeclared variable use warning
 
     if os.path.isfile(args.config):
         try:
@@ -70,10 +69,11 @@ def main():
 
                 to_username = hit.get("to_username", None)
                 to_alias = hit.get("to_alias", None)
+                to_id = hit.get("to_id")
 
                 username_part = " [@{}]".format(username) if username else ""
 
-                timestamp = "{:%d, %b %Y - %I:%M:%S %p}".format(hit["timestamp"])
+                timestamp = config.timestamp_format.format(hit["timestamp"])
 
                 chat_slug = hit["chat"]
 
@@ -89,13 +89,17 @@ def main():
                     to_user_part = ""
 
                 if media:
-                    print("{} in \"{}\"{} | {}{}: {}{}".format(timestamp, chat_slug, to_user_part, alias,
-                                                               username_part, media,
-                                                               " Caption: {}".format(message) if message else ""))
+                    caption_part = " Caption: {}".format(message) if message else ""
+
+                    print("{} chat=\"{}\" to_id=\"{}\"{} | {}{}: {}{}".format(timestamp, chat_slug, to_id, to_user_part,
+                                                                              alias,
+                                                                              username_part, media,
+                                                                              caption_part))
                 else:
-                    print("{} in \"{}\"{} | {}{}: {}".format(timestamp, chat_slug, to_user_part, alias,
-                                                             username_part,
-                                                             hit["message"]))
+                    print("{} chat=\"{}\" to_id=\"{}\"{} | {}{}: {}".format(timestamp, chat_slug, to_id, to_user_part,
+                                                                            alias,
+                                                                            username_part,
+                                                                            hit["message"]))
 
 
 if __name__ == "__main__":

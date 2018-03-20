@@ -36,8 +36,17 @@ class ApiKey:
 
 class TGMinerConfig:
     def __init__(self, path):
+        self.api_key = None
+        self.session_path = None
+        self.data_dir = None
+        self.chat_stdout = None
+        self.config_path = path
+        self.timestamp_format = None
+        self.load()
+
+    def load(self):
         parser = jsoncomment.JsonComment(json)
-        with open(path) as file:
+        with open(self.config_path) as file:
             parsed_object = parser.load(file)
 
         if "api_key" not in parsed_object:
@@ -53,3 +62,4 @@ class TGMinerConfig:
         self.session_path = parsed_object.get("session_path", "tgminer")
         self.data_dir = parsed_object.get("data_dir", "data")
         self.chat_stdout = parsed_object.get("chat_stdout", False)
+        self.timestamp_format = parsed_object.get("timestamp_format", "({:%Y/%m/%d - %I:%M:%S %p})")
