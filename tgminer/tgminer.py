@@ -240,7 +240,7 @@ class TGMinerClient:
                     with open(file_name, "wb") as f:
                         while True:
                             r2 = cdn_session.send(
-                                pyrogram.functions.upload.GetCdnFile(
+                                pyrogram.api.functions.upload.GetCdnFile(
                                     location=location,
                                     file_token=r.file_token,
                                     offset=offset,
@@ -251,7 +251,7 @@ class TGMinerClient:
                             if isinstance(r2, pyrogram.api.types.upload.CdnFileReuploadNeeded):
                                 try:
                                     session.send(
-                                        pyrogram.functions.functions.upload.ReuploadCdnFile(
+                                        pyrogram.api.functions.functions.upload.ReuploadCdnFile(
                                             file_token=r.file_token,
                                             request_token=r2.request_token
                                         )
