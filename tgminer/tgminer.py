@@ -278,6 +278,7 @@ class TGMinerClient:
             return
 
         is_peer_channel = isinstance(message.to_id, pyrogram.api.types.PeerChannel)
+        is_peer_chat = isinstance(message.to_id, pyrogram.api.types.PeerChat)
         is_peer_user = isinstance(message.to_id, pyrogram.api.types.PeerUser)
 
         user = users[message.from_id]
@@ -289,11 +290,11 @@ class TGMinerClient:
         log_name = "log.txt"
         channel = None
 
-        if is_peer_channel:
-            channel = chats[message.to_id.channel_id]
+        if is_peer_channel or is_peer_chat:
+            channel = chats[message.to_id.channel_id] if is_peer_channel else chats[message.to_id.chat_id]
             chat_slug = slugify(channel.title)
             log_folder = os.path.join(self._config.data_dir, TGMinerClient.CHANNELS_DIR_NAME,
-                                      str(message.to_id.channel_id))
+                                      str(channel.id))
             log_name = chat_slug + ".log.txt"
 
         try:
