@@ -343,7 +343,7 @@ class TGMinerClient:
         else:
             to_user = None
 
-        to_id = str(channel.id if channel else message.to_id)
+        to_id = str(channel.id if channel else message.to_id.user_id)
 
         self._write_index_msg(user, to_user, indexed_media_info, indexed_message, chat_slug, to_id)
 
