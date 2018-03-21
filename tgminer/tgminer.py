@@ -249,7 +249,7 @@ class TGMinerClient:
             log_entry = "{}: {}{}".format(user_name, indexed_media_info, " Caption: {}"
                                           .format(message.message) if message.message else "")
 
-            self._client.download_media(message, file_name="{}.{}".format(media_file_path, self.get_media_ext(message)))
+            self._client.download_media(message, file_name=media_file_path)
 
         elif isinstance(message.media, pyrogram.api.types.MessageMediaDocument):
             name = str(uuid.uuid4())
@@ -263,7 +263,7 @@ class TGMinerClient:
             log_entry = "{}: {}{}".format(user_name, indexed_media_info, " Caption: {}"
                                           .format(message.message) if message.message else "")
 
-            self._client.download_media(message, file_name="{}.{}".format(media_file_path, self.get_media_ext(message)))
+            self._client.download_media(message, file_name=media_file_path)
 
         else:
             indexed_message = message.message
