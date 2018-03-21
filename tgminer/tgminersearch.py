@@ -49,6 +49,9 @@ def main():
         except TGMinerConfigException as e:
             print(str(e), file=sys.stderr)
             exit(3)
+    else:
+        print("Cannot find tgminer config file: \"{}\"".format(args.config))
+        exit(2)
 
     index = whoosh.index.open_dir(os.path.join(config.data_dir, "indexdir"))
 

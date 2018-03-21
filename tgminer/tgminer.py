@@ -59,23 +59,16 @@ class TGMinerClient:
 
         self._config = config
 
-        if session_path_dir != "":
-            try:
-                os.makedirs(session_path_dir)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise
+        if session_path_dir:
+            os.makedirs(session_path_dir, exist_ok=True)
 
         pyrogram.Client.DOWNLOAD_WORKERS = 4
         self._client = pyrogram.Client(config.session_path, api_key=(config.api_key.id, config.api_key.hash))
 
         self._client.set_update_handler(self._update_handler)
 
-        try:
-            os.makedirs(config.data_dir)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+        
+        os.makedirs(config.data_dir, exist_ok=True)
 
         self._indexdir = os.path.join(config.data_dir, TGMinerClient.INDEX_DIR_NAME)
 
@@ -84,11 +77,12 @@ class TGMinerClient:
 
         self._index_lock = threading.Lock()
 
-        if not os.path.exists(self._indexdir):
+        try:
             os.makedirs(self._indexdir)
             self._index = whoosh.index.create_in(self._indexdir, tgminer.fulltext.LogSchema)
-        else:
-            self._index = whoosh.index.open_dir(self._indexdir)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                self._index = whoosh.index.open_dir(self._indexdir)
 
     @staticmethod
     def get_media_ext(message):
@@ -227,11 +221,8 @@ class TGMinerClient:
                                       str(channel.id))
             log_name = chat_slug + ".log.txt"
 
-        try:
-            os.makedirs(log_folder)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+        
+        os.makedirs(log_folder, exist_ok=True)
 
         log_file = os.path.join(log_folder, log_name)
 
