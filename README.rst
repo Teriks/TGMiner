@@ -110,7 +110,7 @@ Install
 
 Install latest pyrogram:
 
-``sudo pip git+https://github.com/pyrogram/pyrogram --upgrade``
+``sudo pip install git+https://github.com/pyrogram/pyrogram --upgrade``
 
 
 Clone or download repository.
