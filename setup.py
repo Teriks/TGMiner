@@ -26,7 +26,10 @@ setup(name='tgminer',
       description='Telegram data mining client',
       long_description=readme,
       include_package_data=True,
-      install_requires=["python-slugify", "whoosh", "pyrogram", "tgcrypto", "jsoncomment", "fasteners"],
+      install_requires=["python-slugify", "whoosh", "tgcrypto", "jsoncomment", "fasteners"],
+      dependency_links=[
+          'https://github.com/pyrogram/pyrogram/archive/f7ce3abc8d722953ef39d2fb01ef3acddb80b2fb.zip#egg=pyrogram-0.6.3',
+      ],
       entry_points={
           'console_scripts': [
               'tgminer = tgminer.tgminer:main',
