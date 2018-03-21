@@ -119,6 +119,6 @@ Clone or download repository.
 
 Or:
 
-``sudo pip install git+https://github.com/Teriks/TGMiner --upgrade --process-dependency-links``
+``sudo pip install git+https://github.com/Teriks/TGMiner --upgrade``
 
 Alternatively on Windows, run the command in an admin level command prompt without 'sudo'.
