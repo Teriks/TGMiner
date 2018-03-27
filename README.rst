@@ -108,11 +108,6 @@ Query Examples:
 Install
 =======
 
-Install latest pyrogram:
-
-``sudo pip install git+https://github.com/pyrogram/pyrogram --upgrade``
-
-
 Clone or download repository.
 
 ``sudo python setup.py install --upgrade``

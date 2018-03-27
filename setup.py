@@ -17,16 +17,17 @@ with open('README.rst', 'r', encoding='utf-8') as f:
 
 
 setup(name='tgminer',
+      python_requires='>=3.5',
       author='Teriks',
       author_email='Teriks@users.noreply.github.com',
       url='https://github.com/Teriks/TGMiner',
       version=version,
-      packages=find_packages(exclude=("debian_packaging",)),
+      packages=find_packages(),
       license='BSD 3-Clause',
       description='Telegram data mining client',
       long_description=readme,
       include_package_data=True,
-      install_requires=["python-slugify", "whoosh", "tgcrypto", "jsoncomment", "fasteners"],
+      install_requires=["python-slugify", "whoosh", "tgcrypto", "jsoncomment", "fasteners", "pyrogram", "dschema"],
       entry_points={
           'console_scripts': [
               'tgminer = tgminer.tgminer:main',
@@ -39,8 +40,6 @@ setup(name='tgminer',
           'Intended Audience :: Other Audience',
           'Natural Language :: English',
           'Operating System :: OS Independent',
-          'Programming Language :: Python :: 3.4',
-          'Programming Language :: Python :: 3.5',
           'Topic :: Utilities',
       ]
       )

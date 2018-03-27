@@ -19,6 +19,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import whoosh.analysis
+import whoosh.fields
 
 
 class LogSchema(whoosh.fields.SchemaClass):

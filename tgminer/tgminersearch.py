@@ -22,11 +22,10 @@ import argparse
 import os.path
 
 import fasteners
-import whoosh.index
-from whoosh.qparser import QueryParser, sys
-
 import tgminer.fulltext
-from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
+import whoosh.index
+from tgminer.config import TGMinerConfig, TGMinerConfigException
+from whoosh.qparser import QueryParser, sys
 
 
 def main():

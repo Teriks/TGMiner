@@ -23,25 +23,21 @@ import datetime
 import errno
 import mimetypes
 import os
+import sys
 import threading
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 
 import fasteners
 import pyrogram
 import pyrogram.api
+import pyrogram.api.errors
+import pyrogram.api.functions
 import pyrogram.api.types
 import pyrogram.session
-import sys
+import tgminer.fulltext
 import whoosh.index
 from slugify import slugify
-from pyrogram.crypto import AES
-import pyrogram.api.functions
-import pyrogram.api.errors
-from hashlib import sha256
-
-import tgminer.fulltext
-from tgminer.tgminerconfig import TGMinerConfig, TGMinerConfigException
+from tgminer.config import TGMinerConfig, TGMinerConfigException
 
 # silence pyrogram message on start
 pyrogram.session.Session.notice_displayed = True
@@ -67,7 +63,6 @@ class TGMinerClient:
 
         self._client.set_update_handler(self._update_handler)
 
-        
         os.makedirs(config.data_dir, exist_ok=True)
 
         self._indexdir = os.path.join(config.data_dir, TGMinerClient.INDEX_DIR_NAME)
@@ -191,6 +186,15 @@ class TGMinerClient:
     def _timestamp(self):
         return self._config.timestamp_format.format(datetime.datetime.now())
 
+    def _filter_chat_check(self, title, chat_slug, chat_id):
+        filter_title = self._config.chat_filters.title
+        filter_id = self._config.chat_filters.id
+        filter_title_slug = self._config.chat_filters.title_slug
+
+        return not (filter_title.match(title) and
+                    filter_id.match(str(chat_id)) and
+                    filter_title_slug.match(chat_slug))
+
     def _update_handler(self, client, update, users, chats):
 
         if not isinstance(update, (pyrogram.api.types.UpdateNewChannelMessage, pyrogram.api.types.UpdateNewMessage)):
@@ -217,11 +221,14 @@ class TGMinerClient:
         if is_peer_channel or is_peer_chat:
             channel = chats[message.to_id.channel_id] if is_peer_channel else chats[message.to_id.chat_id]
             chat_slug = slugify(channel.title)
+
+            if self._filter_chat_check(channel.title, chat_slug, channel.id):
+                return
+
             log_folder = os.path.join(self._config.data_dir, TGMinerClient.CHANNELS_DIR_NAME,
                                       str(channel.id))
             log_name = chat_slug + ".log.txt"
 
-        
         os.makedirs(log_folder, exist_ok=True)
 
         log_file = os.path.join(log_folder, log_name)

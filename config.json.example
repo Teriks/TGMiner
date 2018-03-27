@@ -17,5 +17,12 @@
     "chat_stdout": false,
 
     /* timestamp format */
-    "timestamp_format": "({:%Y/%m/%d - %I:%M:%S %p})"
+    "timestamp_format": "({:%Y/%m/%d - %I:%M:%S %p})",
+
+    /* only allow group channels/chats matching all these expressions (regex) to be logged */
+    "chat_filters": {
+        "title": ".*",
+        "title_slug": ".*",
+        "id": ".*"
+    }
 }

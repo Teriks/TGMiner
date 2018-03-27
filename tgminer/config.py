@@ -19,7 +19,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import re
 
+import dschema
 import jsoncomment
 
 
@@ -28,20 +30,35 @@ class TGMinerConfigException(Exception):
         super().__init__(message)
 
 
-class ApiKey:
-    def __init__(self, id, hash):
-        self.id = id
-        self.hash = hash
-
-
 class TGMinerConfig:
     def __init__(self, path):
-        self.api_key = None
-        self.session_path = None
-        self.data_dir = None
-        self.chat_stdout = None
         self.config_path = path
-        self.timestamp_format = None
+
+        self._validator = dschema.Validator({
+            "api_key": {
+                "id": dschema.prop(required=True, type=int),
+                "hash": dschema.prop(required=True),
+                dschema.Required: True
+            },
+            "session_path": dschema.prop(default='tgminer'),
+            "data_dir": dschema.prop(default='data'),
+            "chat_stdout": dschema.prop(default=False, type=bool),
+            "timestamp_format": dschema.prop(default="({:%Y/%m/%d - %I:%M:%S %p})"),
+
+            "chat_filters": {
+                "title": dschema.prop(default=".*", type="regex"),
+                "title_slug": dschema.prop(default=".*", type="regex"),
+                "id": dschema.prop(default=".*", type="regex")
+            }
+        })
+
+        def regex_type(value):
+            return re.compile(value)
+
+        self._validator.add_type("regex", regex_type)
+
+        self._config = None
+
         self.load()
 
     def load(self):
@@ -49,17 +66,15 @@ class TGMinerConfig:
         with open(self.config_path) as file:
             parsed_object = parser.load(file)
 
-        if "api_key" not in parsed_object:
-            raise TGMinerConfigException("api_key missing from TGMiner config.")
+        try:
+            self._config = self._validator.validate(parsed_object, namespace=True, copy=False)
+        except dschema.ValidationError as e:
+            raise TGMinerConfigException("Config Error: " + str(e))
 
-        if "id" not in parsed_object["api_key"]:
-            raise TGMinerConfigException("id missing from api_key in TGMiner config.")
+        self.__dict__.update(self._config.__dict__)
 
-        if "hash" not in parsed_object["api_key"]:
-            raise TGMinerConfigException("hash missing from api_key in TGMiner config.")
+    def __repr__(self):
+        return str(self._config)
 
-        self.api_key = ApiKey(parsed_object["api_key"]["id"], parsed_object["api_key"]["hash"])
-        self.session_path = parsed_object.get("session_path", "tgminer")
-        self.data_dir = parsed_object.get("data_dir", "data")
-        self.chat_stdout = parsed_object.get("chat_stdout", False)
-        self.timestamp_format = parsed_object.get("timestamp_format", "({:%Y/%m/%d - %I:%M:%S %p})")
+    def __str__(self):
+        return self.__repr__()
