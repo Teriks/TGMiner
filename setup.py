@@ -10,11 +10,9 @@ with open('tgminer/__init__.py') as f:
 if not version:
     raise RuntimeError('version is not set')
 
-
 readme = ''
 with open('README.rst', 'r', encoding='utf-8') as f:
     readme = f.read()
-
 
 setup(name='tgminer',
       python_requires='>=3.5',
