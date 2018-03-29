@@ -35,27 +35,45 @@ class TGMinerConfig:
         self.config_path = path
 
         self._validator = dschema.Validator({
-            "api_key": {
-                "id": dschema.prop(required=True, type=int),
-                "hash": dschema.prop(required=True),
+            'api_key': {
+                'id': dschema.prop(required=True, type=int),
+                'hash': dschema.prop(required=True),
                 dschema.Required: True
             },
-            "session_path": dschema.prop(default='tgminer'),
-            "data_dir": dschema.prop(default='data'),
-            "chat_stdout": dschema.prop(default=False, type=bool),
-            "timestamp_format": dschema.prop(default="({:%Y/%m/%d - %I:%M:%S %p})"),
+            'session_path': dschema.prop(default='tgminer'),
+            'data_dir': dschema.prop(default='data'),
+            'chat_stdout': dschema.prop(default=False, type=bool),
+            'timestamp_format': dschema.prop(default='({:%Y/%m/%d - %I:%M:%S %p})'),
 
-            "chat_filters": {
-                "title": dschema.prop(default=".*", type="regex"),
-                "title_slug": dschema.prop(default=".*", type="regex"),
-                "id": dschema.prop(default=".*", type="regex")
-            }
+            'group_filters': {
+                'title': dschema.prop(default='.*', type='regex'),
+                'title_slug': dschema.prop(default='.*', type='regex'),
+                'id': dschema.prop(default='.*', type='regex'),
+
+                'username': dschema.prop(default='.*', type='regex'),
+                'user_alias': dschema.prop(default='.*', type='regex'),
+                'user_id': dschema.prop(default='.*', type='regex')
+            },
+
+            'direct_chat_filters': {
+                'username': dschema.prop(default='.*', type='regex'),
+                'alias': dschema.prop(default='.*', type='regex'),
+                'id': dschema.prop(defaults='.*', type='regex')
+            },
+
+            'user_filters': {
+                'username': dschema.prop(default='.*', type='regex'),
+                'alias': dschema.prop(default='.*', type='regex'),
+                'id': dschema.prop(defaults='.*', type='regex')
+            },
+
+            'log_direct_chats': dschema.prop(default=True, type=bool)
         })
 
         def regex_type(value):
             return re.compile(value)
 
-        self._validator.add_type("regex", regex_type)
+        self._validator.add_type('regex', regex_type)
 
         self._config = None
 

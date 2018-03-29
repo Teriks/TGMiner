@@ -19,10 +19,43 @@
     /* timestamp format */
     "timestamp_format": "({:%Y/%m/%d - %I:%M:%S %p})",
 
-    /* only allow group channels/chats matching all these expressions (regex) to be logged */
-    "chat_filters": {
-        "title": ".*",
-        "title_slug": ".*",
-        "id": ".*"
-    }
+	/* only allow group channels/chats matching all these expressions (regex) to be logged */
+	"group_filters": {
+		"title": ".*",
+		"title_slug": ".*",
+		"id": ".*",
+
+		/* posting user details */
+		/* do not put @ in your username regex */
+
+		"username": ".*",
+		"user_alias": ".*",
+		"user_id": ".*"
+	},
+
+	/* only allow direct chat messages matching all these expressions (regex) to be logged */
+	"direct_chat_filters": {
+
+		/* do not put @ in your username regex */
+
+		"username": ".*",
+		"alias": ".*",
+		"id": ".*"
+		/* User ID ^ */
+	},
+
+	/* only allow messages from users matching all these expressions (regex) to be logged (global) */
+	"user_filters": {
+
+	    /* do not put @ in your username regex */
+
+		"username": ".*",
+		"alias": ".*",
+		"id": ".*"
+		/* User ID ^ */
+	},
+
+
+	/* Should direct chats to contacts ever be logged? */
+	"log_direct_chats": true
 }

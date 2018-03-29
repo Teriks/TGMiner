@@ -31,12 +31,12 @@ from whoosh.qparser import QueryParser, sys
 def main():
     arg_parser = argparse.ArgumentParser()
 
-    arg_parser.add_argument("query", help="Query text")
+    arg_parser.add_argument('query', help='Query text')
 
-    arg_parser.add_argument("--config", help="Path to TGMiner config file, defaults to \"CWD/config.json\".",
-                            default=os.path.join(os.getcwd(), "config.json"))
+    arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".',
+                            default=os.path.join(os.getcwd(), 'config.json'))
 
-    arg_parser.add_argument("--limit", help="Results limit, 0 for infinite, default is 10", type=int, default=10)
+    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10', type=int, default=10)
 
     args = arg_parser.parse_args()
 
@@ -49,60 +49,60 @@ def main():
             print(str(e), file=sys.stderr)
             exit(3)
     else:
-        print("Cannot find tgminer config file: \"{}\"".format(args.config))
+        print('Cannot find tgminer config file: "{}"'.format(args.config))
         exit(2)
 
-    index = whoosh.index.open_dir(os.path.join(config.data_dir, "indexdir"))
+    index = whoosh.index.open_dir(os.path.join(config.data_dir, 'indexdir'))
 
-    index_lock_path = os.path.join(config.data_dir, "tgminer_mutex")
+    index_lock_path = os.path.join(config.data_dir, 'tgminer_mutex')
 
     schema = tgminer.fulltext.LogSchema()
 
-    query_parser = QueryParser("message", schema=schema)
+    query_parser = QueryParser('message', schema=schema)
 
     query = query_parser.parse(args.query)
 
     with fasteners.InterProcessLock(index_lock_path):
         with index.searcher() as searcher:
-            for hit in searcher.search(query, limit=None if args.limit < 1 else args.limit, sortedby="timestamp"):
+            for hit in searcher.search(query, limit=None if args.limit < 1 else args.limit, sortedby='timestamp'):
 
-                username = hit.get("username", None)
-                alias = hit.get("alias", "NO_ALIAS")
+                username = hit.get('username', None)
+                alias = hit.get('alias', 'NO_ALIAS')
 
-                to_username = hit.get("to_username", None)
-                to_alias = hit.get("to_alias", None)
-                to_id = hit.get("to_id")
+                to_username = hit.get('to_username', None)
+                to_alias = hit.get('to_alias', None)
+                to_id = hit.get('to_id')
 
-                username_part = " [@{}]".format(username) if username else ""
+                username_part = ' [@{}]'.format(username) if username else ''
 
-                timestamp = config.timestamp_format.format(hit["timestamp"])
+                timestamp = config.timestamp_format.format(hit['timestamp'])
 
-                chat_slug = hit["chat"]
+                chat_slug = hit['chat']
 
-                message = hit.get("message", None)
+                message = hit.get('message', None)
 
-                media = hit.get("media", None)
+                media = hit.get('media', None)
 
-                to_username_part = " [@{}]".format(to_username) if to_username else ""
+                to_username_part = ' [@{}]'.format(to_username) if to_username else ''
 
                 if to_alias or to_username_part:
-                    to_user_part = " to {}{}".format(to_alias, to_username_part)
+                    to_user_part = ' to {}{}'.format(to_alias, to_username_part)
                 else:
-                    to_user_part = ""
+                    to_user_part = ''
 
                 if media:
-                    caption_part = " Caption: {}".format(message) if message else ""
+                    caption_part = ' Caption: {}'.format(message) if message else ''
 
-                    print("{} chat=\"{}\" to_id=\"{}\"{} | {}{}: {}{}".format(timestamp, chat_slug, to_id, to_user_part,
-                                                                              alias,
-                                                                              username_part, media,
-                                                                              caption_part))
+                    print('{} chat="{}" to_id="{}"{} | {}{}: {}{}'.format(timestamp, chat_slug, to_id, to_user_part,
+                                                                          alias,
+                                                                          username_part, media,
+                                                                          caption_part))
                 else:
-                    print("{} chat=\"{}\" to_id=\"{}\"{} | {}{}: {}".format(timestamp, chat_slug, to_id, to_user_part,
-                                                                            alias,
-                                                                            username_part,
-                                                                            hit["message"]))
+                    print('{} chat="{}" to_id="{}"{} | {}{}: {}'.format(timestamp, chat_slug, to_id, to_user_part,
+                                                                        alias,
+                                                                        username_part,
+                                                                        hit['message']))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -44,10 +44,10 @@ pyrogram.session.Session.notice_displayed = True
 
 
 class TGMinerClient:
-    INDEX_DIR_NAME = "indexdir"
-    INTERPROCESS_MUTEX = "tgminer_mutex"
-    DIRECT_CHATS_SLUG = "direct_chats"
-    CHANNELS_DIR_NAME = "channels"
+    INDEX_DIR_NAME = 'indexdir'
+    INTERPROCESS_MUTEX = 'tgminer_mutex'
+    DIRECT_CHATS_SLUG = 'direct_chats'
+    CHANNELS_DIR_NAME = 'channels'
 
     def __init__(self, config):
 
@@ -94,15 +94,15 @@ class TGMinerClient:
             document = media.document
 
             if isinstance(document, pyrogram.api.types.Document):
-                extension = ".txt" if document.mime_type == "text/plain" else \
-                    mimetypes.guess_extension(document.mime_type) if document.mime_type else ".unknown"
+                extension = '.txt' if document.mime_type == 'text/plain' else \
+                    mimetypes.guess_extension(document.mime_type) if document.mime_type else '.unknown'
 
                 if extension is None:
-                    if document.mime_type == "image/webp":
+                    if document.mime_type == 'image/webp':
                         # mimetypes.guess_extension does not figure out webp for some reason
-                        return ".webp"
+                        return '.webp'
                     else:
-                        return ".none"
+                        return '.none'
                 return extension
 
         elif isinstance(media, (pyrogram.api.types.MessageMediaPhoto, pyrogram.api.types.Photo)):
@@ -112,9 +112,9 @@ class TGMinerClient:
                 photo = media
 
             if isinstance(photo, pyrogram.api.types.Photo):
-                return ".jpg"
+                return '.jpg'
 
-        return ".none"
+        return '.none'
 
     @staticmethod
     def _get_user_alias(user):
@@ -123,7 +123,7 @@ class TGMinerClient:
        """
         if user.first_name is not None:
             if user.last_name is not None:
-                return "{} {}".format(
+                return '{} {}'.format(
                     user.first_name, user.last_name)
             else:
                 return user.first_name
@@ -134,22 +134,22 @@ class TGMinerClient:
         """
         :type user: pyrogram.api.types.User
         """
-        user_id_part = "[@{}]".format(user.username) if user.username else ""
+        user_id_part = '[@{}]'.format(user.username) if user.username else ''
 
         if user.first_name is not None:
             if user.last_name is not None:
-                return "{} {} {}".format(
+                return '{} {} {}'.format(
                     user.first_name, user.last_name, user_id_part).rstrip()
             else:
-                return "{} {}".format(user.first_name, user_id_part).rstrip()
+                return '{} {}'.format(user.first_name, user_id_part).rstrip()
 
         if user.last_name is not None:
-            return "{} {}".format(user.last_name, user_id_part).rstrip()
+            return '{} {}'.format(user.last_name, user_id_part).rstrip()
 
         if user.username is not None:
             return user_id_part
         else:
-            return "None"
+            return 'None'
 
     def _write_index_msg(self, user, to_user, media, message, chat_slug, to_id):
         """
@@ -186,14 +186,39 @@ class TGMinerClient:
     def _timestamp(self):
         return self._config.timestamp_format.format(datetime.datetime.now())
 
-    def _filter_chat_check(self, title, chat_slug, chat_id):
-        filter_title = self._config.chat_filters.title
-        filter_id = self._config.chat_filters.id
-        filter_title_slug = self._config.chat_filters.title_slug
+    def _filter_group_chat_check(self, title, chat_slug, chat_id, username, user_alias, user_id):
+        filter_title = self._config.group_filters.title
+        filter_id = self._config.group_filters.id
+        filter_title_slug = self._config.group_filters.title_slug
+
+        filter_username = self._config.group_filters.username
+        filter_user_alias = self._config.group_filters.user_alias
+        filter_user_id = self._config.group_filters.user_id
 
         return not (filter_title.match(title) and
                     filter_id.match(str(chat_id)) and
-                    filter_title_slug.match(chat_slug))
+                    filter_title_slug.match(chat_slug) and
+                    filter_username.match(username) and
+                    filter_user_alias.match(user_alias) and
+                    filter_user_id.match(str(user_id)))
+
+    def _filter_direct_chat_check(self, username, alias, from_id):
+        filter_username = self._config.direct_chat_filters.username
+        filter_alias = self._config.direct_chat_filters.alias
+        filter_id = self._config.direct_chat_filters.id
+
+        return not (filter_username.match(username) and
+                    filter_alias.match(alias) and
+                    filter_id.match(str(from_id)))
+
+    def _filter_users_check(self, username, alias, from_id):
+        filter_username = self._config.user_filters.username
+        filter_alias = self._config.user_filters.alias
+        filter_id = self._config.user_filters.id
+
+        return not (filter_username.match(username) and
+                    filter_alias.match(alias) and
+                    filter_id.match(str(from_id)))
 
     def _update_handler(self, client, update, users, chats):
 
@@ -205,29 +230,59 @@ class TGMinerClient:
         if not isinstance(message, pyrogram.api.types.Message):
             return
 
+        is_peer_user = isinstance(message.to_id, pyrogram.api.types.PeerUser)
+
+        if is_peer_user and not self._config.log_direct_chats:
+            return
+
         is_peer_channel = isinstance(message.to_id, pyrogram.api.types.PeerChannel)
         is_peer_chat = isinstance(message.to_id, pyrogram.api.types.PeerChat)
-        is_peer_user = isinstance(message.to_id, pyrogram.api.types.PeerUser)
 
         user = users[message.from_id]
 
-        user_name = self._get_log_username(user)
+        user_name = user.username if user.username else ''
+        user_alias = self._get_user_alias(user)
+
+        log_user_name = self._get_log_username(user)
 
         chat_slug = TGMinerClient.DIRECT_CHATS_SLUG
         log_folder = os.path.join(self._config.data_dir, TGMinerClient.DIRECT_CHATS_SLUG)
-        log_name = "log.txt"
+        log_name = 'log.txt'
         channel = None
 
         if is_peer_channel or is_peer_chat:
             channel = chats[message.to_id.channel_id] if is_peer_channel else chats[message.to_id.chat_id]
             chat_slug = slugify(channel.title)
 
-            if self._filter_chat_check(channel.title, chat_slug, channel.id):
+            if self._filter_group_chat_check(title=channel.title,
+                                             chat_slug=chat_slug,
+                                             chat_id=channel.id,
+                                             username=user_name,
+                                             user_alias=user_alias,
+                                             user_id=user.id):
                 return
 
             log_folder = os.path.join(self._config.data_dir, TGMinerClient.CHANNELS_DIR_NAME,
                                       str(channel.id))
-            log_name = chat_slug + ".log.txt"
+            log_name = chat_slug + '.log.txt'
+
+        if is_peer_user:
+
+            to_user = users[message.to_id.user_id]
+
+            if self._filter_direct_chat_check(username=user_name,
+                                              alias=user_alias,
+                                              from_id=user.id):
+                return
+        else:
+            to_user = None
+
+        if self._filter_users_check(username=user_name,
+                                    alias=user_alias,
+                                    from_id=user.id):
+            return
+
+        to_id = str(channel.id if channel else message.to_id.user_id)
 
         os.makedirs(log_folder, exist_ok=True)
 
@@ -240,12 +295,12 @@ class TGMinerClient:
 
             media_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
 
-            indexed_media_info = "(Photo: {})".format(media_file_path)
+            indexed_media_info = '(Photo: {})'.format(media_file_path)
 
             indexed_message = message.message
 
-            log_entry = "{}: {}{}".format(user_name, indexed_media_info, " Caption: {}"
-                                          .format(message.message) if message.message else "")
+            log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
+                                          .format(message.message) if message.message else '')
 
             self._client.download_media(message, file_name=media_file_path)
 
@@ -254,37 +309,30 @@ class TGMinerClient:
 
             media_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
 
-            indexed_media_info = "(Document: \"{}\": {})".format(message.media.document.mime_type, media_file_path)
+            indexed_media_info = '(Document: "{}": {})'.format(message.media.document.mime_type, media_file_path)
 
             indexed_message = message.message
 
-            log_entry = "{}: {}{}".format(user_name, indexed_media_info, " Caption: {}"
-                                          .format(message.message) if message.message else "")
+            log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
+                                          .format(message.message) if message.message else '')
 
             self._client.download_media(message, file_name=media_file_path)
 
         else:
             indexed_message = message.message
-            log_entry = "{}: {}".format(user_name, message.message)
-
-        if is_peer_user:
-            to_user = users[message.to_id.user_id]
-        else:
-            to_user = None
-
-        to_id = str(channel.id if channel else message.to_id.user_id)
+            log_entry = '{}: {}'.format(log_user_name, message.message)
 
         self._write_index_msg(user, to_user, indexed_media_info, indexed_message, chat_slug, to_id)
 
-        log_entry = "{} chat=\"{}\" to_id=\"{}\"{} | {}".format(self._timestamp(), chat_slug, to_id,
-                                                                " to {}".format(
-                                                                    self._get_log_username(to_user)) if to_user else "",
-                                                                log_entry)
+        log_entry = '{} chat="{}" to_id="{}"{} | {}'.format(self._timestamp(), chat_slug, to_id,
+                                                            ' to {}'.format(
+                                                                self._get_log_username(to_user)) if to_user else '',
+                                                            log_entry)
 
         if self._config.chat_stdout:
             print(log_entry)
 
-        with open(log_file, "a", encoding='utf-8') as fhandle:
+        with open(log_file, 'a', encoding='utf-8') as fhandle:
             print(log_entry, file=fhandle)
 
     def start(self):
@@ -295,8 +343,8 @@ class TGMinerClient:
 def main():
     arg_parser = argparse.ArgumentParser()
 
-    arg_parser.add_argument("--config", help="Path to TGMiner config file, defaults to \"CWD/config.json\".",
-                            default=os.path.join(os.getcwd(), "config.json"))
+    arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".',
+                            default=os.path.join(os.getcwd(), 'config.json'))
 
     args = arg_parser.parse_args()
 
@@ -307,9 +355,9 @@ def main():
             print(str(e), file=sys.stderr)
             exit(3)
     else:
-        print("Config file \"{}\" does not exist.".format(os.path.abspath(args.config)), file=sys.stderr)
+        print('Config file "{}" does not exist.'.format(os.path.abspath(args.config)), file=sys.stderr)
         exit(2)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
