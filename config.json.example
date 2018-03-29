@@ -1,23 +1,23 @@
 {
-    /* comments allowed via jsoncomment module */
+	/* comments allowed via jsoncomment module */
 
-    /* your telegram app api credentials */
-    "api_key": {
+	/* your telegram app api credentials */
+	"api_key": {
 		"id": "000000",
 		"hash": "00000000000000000000000000000000"
 	},
 
-    /* path for archived chat data, media, and fulltext indexes */
-    "data_dir": "./data",
+	/* path for archived chat data, media, and fulltext indexes */
+	"data_dir": "./data",
 
-    /* path for the session authentication file */
-    "session_path": "./tgminer",
+	/* path for the session authentication file */
+	"session_path": "./tgminer",
 
-    /* print all logged chat messages/updates to stdout */
-    "chat_stdout": false,
+	/* print all logged chat messages/updates to stdout */
+	"chat_stdout": false,
 
-    /* timestamp format */
-    "timestamp_format": "({:%Y/%m/%d - %I:%M:%S %p})",
+	/* timestamp format */
+	"timestamp_format": "({:%Y/%m/%d - %I:%M:%S %p})",
 
 	/* only allow group channels/chats matching all these expressions (regex) to be logged */
 	"group_filters": {
@@ -47,7 +47,7 @@
 	/* only allow messages from users matching all these expressions (regex) to be logged (global) */
 	"user_filters": {
 
-	    /* do not put @ in your username regex */
+		/* do not put @ in your username regex */
 
 		"username": ".*",
 		"alias": ".*",
