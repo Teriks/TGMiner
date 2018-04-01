@@ -108,7 +108,7 @@ Query Examples:
 tgminer-markov
 ==============
 
-You can produce humorous random chat messages based of your telegram chat logs
+You can produce humorous random chat messages based off your telegram chat logs
 using a combination of the packaged `tgminer-search` and `tgminer-markov` commands.
 
 
