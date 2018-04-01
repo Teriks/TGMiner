@@ -317,7 +317,7 @@ class TGMinerClient:
 
             doc_filter_discarded = False
             og_doc_filename = None
-            
+
             try:
                 filename_attr = (x for x in message.media.document.attributes
                                  if isinstance(x, pyrogram.api.types.DocumentAttributeFilename)).__next__()
