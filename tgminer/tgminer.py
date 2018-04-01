@@ -22,21 +22,22 @@ import argparse
 import datetime
 import errno
 import mimetypes
-import os
 import sys
 import threading
 import uuid
 
 import fasteners
+import os
 import pyrogram
 import pyrogram.api
 import pyrogram.api.errors
 import pyrogram.api.functions
 import pyrogram.api.types
 import pyrogram.session
-import tgminer.fulltext
 import whoosh.index
 from slugify import slugify
+
+import tgminer.fulltext
 from tgminer.config import TGMinerConfig, TGMinerConfigException
 
 # silence pyrogram message on start
@@ -238,6 +239,9 @@ class TGMinerClient:
         is_peer_channel = isinstance(message.to_id, pyrogram.api.types.PeerChannel)
         is_peer_chat = isinstance(message.to_id, pyrogram.api.types.PeerChat)
 
+        if is_peer_channel or is_peer_chat and not self._config.log_group_chats:
+            return
+
         user = users[message.from_id]
 
         user_name = user.username if user.username else ''
@@ -307,16 +311,37 @@ class TGMinerClient:
         elif isinstance(message.media, pyrogram.api.types.MessageMediaDocument):
             name = str(uuid.uuid4())
 
-            media_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
-
-            indexed_media_info = '(Document: "{}": {})'.format(message.media.document.mime_type, media_file_path)
+            doc_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
 
             indexed_message = message.message
 
+            doc_filter_discarded = False
+            og_doc_filename = None
+            
+            try:
+                filename_attr = (x for x in message.media.document.attributes
+                                 if isinstance(x, pyrogram.api.types.DocumentAttributeFilename)).__next__()
+
+                og_doc_filename = filename_attr.file_name
+
+                if self._config.docname_filter.match(filename_attr.file_name):
+                    self._client.download_media(message, file_name=doc_file_path)
+                else:
+                    doc_filter_discarded = True
+
+            except StopIteration:
+                if self._config.docname_filter.match(''):
+                    self._client.download_media(message, file_name=doc_file_path)
+                else:
+                    doc_filter_discarded = True
+
+            indexed_media_info = '(Document: "{}"{}: {})'.format(
+                message.media.document.mime_type,
+                ' - "{}"'.format(og_doc_filename) if og_doc_filename else '',
+                'DOCNAME_FILTER DISCARDED FILE' if doc_filter_discarded else doc_file_path)
+
             log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
                                           .format(message.message) if message.message else '')
-
-            self._client.download_media(message, file_name=media_file_path)
 
         else:
             indexed_message = message.message
