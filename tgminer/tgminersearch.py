@@ -102,8 +102,9 @@ def main():
             for hit in search:
 
                 message = hit.get('message', None)
-                if args.markov and message:
-                    markov_input = markov_input + markovify.split_into_sentences(message)
+                if args.markov:
+                    if message:
+                        markov_input = markov_input + markovify.split_into_sentences(message)
                     continue
 
                 username = hit.get('username', None)
