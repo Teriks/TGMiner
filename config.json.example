@@ -57,5 +57,16 @@
 
 
 	/* Should direct chats to contacts ever be logged? */
-	"log_direct_chats": true
+	"log_direct_chats": true,
+
+	/* Should group/channel chats ever be logged? */
+	"log_group_chats": true,
+
+	/*
+	   Only download document attachments who's names match this regex,
+	   This does not apply to photo attachments, as their original
+	   filename is not passed to the client.
+	*/
+
+	"docname_filter": ".*"
 }

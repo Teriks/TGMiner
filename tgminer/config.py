@@ -58,16 +58,19 @@ class TGMinerConfig:
             'direct_chat_filters': {
                 'username': dschema.prop(default='.*', type='regex'),
                 'alias': dschema.prop(default='.*', type='regex'),
-                'id': dschema.prop(defaults='.*', type='regex')
+                'id': dschema.prop(default='.*', type='regex')
             },
 
             'user_filters': {
                 'username': dschema.prop(default='.*', type='regex'),
                 'alias': dschema.prop(default='.*', type='regex'),
-                'id': dschema.prop(defaults='.*', type='regex')
+                'id': dschema.prop(default='.*', type='regex')
             },
 
-            'log_direct_chats': dschema.prop(default=True, type=bool)
+            'docname_filter': dschema.prop(default='.*', type='regex'),
+
+            'log_direct_chats': dschema.prop(default=True, type=bool),
+            'log_group_chats': dschema.prop(derault=True, type=bool)
         })
 
         def regex_type(value):

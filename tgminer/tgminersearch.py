@@ -23,7 +23,9 @@ import os.path
 import re
 
 import fasteners
+
 import markovify
+
 import whoosh.index
 from whoosh.qparser import QueryParser, sys
 
@@ -53,10 +55,12 @@ def main():
 
     arg_parser.add_argument('query', help='Query text')
 
-    arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".',
+    arg_parser.add_argument('--config',
+                            help='Path to TGMiner config file, defaults to "CWD/config.json".',
                             default=os.path.join(os.getcwd(), 'config.json'))
 
-    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10', type=query_limit(arg_parser),
+    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10',
+                            type=query_limit(arg_parser),
                             default=10)
 
     arg_parser.add_argument('--markov',
@@ -91,7 +95,11 @@ def main():
 
     with fasteners.InterProcessLock(index_lock_path):
         with index.searcher() as searcher:
-            for hit in searcher.search(query, limit=None if args.limit < 1 else args.limit, sortedby='timestamp'):
+
+            search = searcher.search(query,
+                                     limit=None if args.limit < 1 else args.limit,
+                                     sortedby='timestamp')
+            for hit in search:
 
                 message = hit.get('message', None)
                 if args.markov and message:
@@ -123,15 +131,17 @@ def main():
                 if media:
                     caption_part = ' Caption: {}'.format(message) if message else ''
 
-                    print('{} chat="{}" to_id="{}"{} | {}{}: {}{}'.format(timestamp, chat_slug, to_id, to_user_part,
-                                                                          alias,
-                                                                          username_part, media,
-                                                                          caption_part))
+                    print('{} chat="{}" to_id="{}"{} | {}{}: {}{}'
+                          .format(timestamp, chat_slug, to_id, to_user_part,
+                                  alias,
+                                  username_part, media,
+                                  caption_part))
                 else:
-                    print('{} chat="{}" to_id="{}"{} | {}{}: {}'.format(timestamp, chat_slug, to_id, to_user_part,
-                                                                        alias,
-                                                                        username_part,
-                                                                        hit['message']))
+                    print('{} chat="{}" to_id="{}"{} | {}{}: {}'
+                          .format(timestamp, chat_slug, to_id, to_user_part,
+                                  alias,
+                                  username_part,
+                                  hit['message']))
 
     if args.markov:
         for idx, v in enumerate(markov_input):
