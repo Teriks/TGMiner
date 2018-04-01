@@ -105,6 +105,32 @@ Query Examples:
     tgminer-search "media:Document OR media:Photo AND username:some_username"
 
 
+tgminer-markov
+==============
+
+You can produce humorous random chat messages based of your telegram chat logs
+using a combination of the packaged `tgminer-search` and `tgminer-markov` commands.
+
+
+.. code-block:: bash
+
+    # Dump a whole chat by its slugified name into a markov chain
+    # using the "*" query operator.
+
+    # Setting --limit to 0 causes all saved messages to be dumped.
+
+    tgminer-search "chat:my-funniest-chat *" --limit 0 --markov chainfile.json
+
+    # Generate a random message from the markov chain
+
+    tgminer-markov chainfile.json
+
+    # Try to generate a random message between X and Y characters long
+    # These parameters are optional, but must always be specified together
+
+    tgminer-markov chainfile.json --min-length 100 --max-length 500
+
+
 Install
 =======
 

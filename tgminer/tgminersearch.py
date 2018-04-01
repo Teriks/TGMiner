@@ -20,23 +20,48 @@
 
 import argparse
 import os.path
+import re
 
 import fasteners
-import tgminer.fulltext
+import markovify
 import whoosh.index
-from tgminer.config import TGMinerConfig, TGMinerConfigException
 from whoosh.qparser import QueryParser, sys
+
+import tgminer.fulltext
+from tgminer.config import TGMinerConfig, TGMinerConfigException
+
+
+def query_limit(parser):
+    def test(value):
+        # noinspection PyBroadException
+        try:
+            value = int(value)
+        except Exception:
+            parser.error('Query results limit must be an integer.')
+
+        if value < 0:
+            parser.error('Query results limit cannot be less than 0.')
+        return value
+
+    return test
 
 
 def main():
-    arg_parser = argparse.ArgumentParser()
+    arg_parser = argparse.ArgumentParser(
+        description='Preform a fulltext search over stored telegram messages.'
+    )
 
     arg_parser.add_argument('query', help='Query text')
 
     arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".',
                             default=os.path.join(os.getcwd(), 'config.json'))
 
-    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10', type=int, default=10)
+    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10', type=query_limit(arg_parser),
+                            default=10)
+
+    arg_parser.add_argument('--markov',
+                            help='Generate a static markov chain file from the messages in your query results.',
+                            metavar='OUT_FILE')
 
     args = arg_parser.parse_args()
 
@@ -62,9 +87,16 @@ def main():
 
     query = query_parser.parse(args.query)
 
+    markov_input = []
+
     with fasteners.InterProcessLock(index_lock_path):
         with index.searcher() as searcher:
             for hit in searcher.search(query, limit=None if args.limit < 1 else args.limit, sortedby='timestamp'):
+
+                message = hit.get('message', None)
+                if args.markov and message:
+                    markov_input = markov_input + markovify.split_into_sentences(message)
+                    continue
 
                 username = hit.get('username', None)
                 alias = hit.get('alias', 'NO_ALIAS')
@@ -78,8 +110,6 @@ def main():
                 timestamp = config.timestamp_format.format(hit['timestamp'])
 
                 chat_slug = hit['chat']
-
-                message = hit.get('message', None)
 
                 media = hit.get('media', None)
 
@@ -102,6 +132,19 @@ def main():
                                                                         alias,
                                                                         username_part,
                                                                         hit['message']))
+
+    if args.markov:
+        for idx, v in enumerate(markov_input):
+            markov_input[idx] = re.split('\s', v)
+
+        text = markovify.Text(input_text=None, parsed_sentences=markov_input)
+
+        try:
+            with open(args.markov, 'w', encoding='utf-8') as m_out:
+                m_out.write(text.to_json())
+        except OSError as e:
+            print('Could not write markov chain to file "{}", error: {}'
+                  .format(args.markov, e), file=sys.stderr)
 
 
 if __name__ == '__main__':

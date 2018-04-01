@@ -34,9 +34,10 @@ import pyrogram.api.errors
 import pyrogram.api.functions
 import pyrogram.api.types
 import pyrogram.session
-import tgminer.fulltext
 import whoosh.index
 from slugify import slugify
+
+import tgminer.fulltext
 from tgminer.config import TGMinerConfig, TGMinerConfigException
 
 # silence pyrogram message on start
@@ -341,7 +342,7 @@ class TGMinerClient:
 
 
 def main():
-    arg_parser = argparse.ArgumentParser()
+    arg_parser = argparse.ArgumentParser(description='Passive telegram mining client.')
 
     arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".',
                             default=os.path.join(os.getcwd(), 'config.json'))
