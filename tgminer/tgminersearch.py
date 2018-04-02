@@ -171,12 +171,14 @@ def main():
                                   hit['message']))
 
     if args.markov:
+        split_by_spaces = re.compile('\s')
+
         if len(markov_input) == 0:
             print('Query returned no messages!', file=sys.stderr)
             exit(2)
 
         for idx, v in enumerate(markov_input):
-            markov_input[idx] = re.split('\s', v)
+            markov_input[idx] = split_by_spaces.split(v)
 
         text = markovify.Text(input_text=None,
                               parsed_sentences=markov_input,
