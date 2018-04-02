@@ -60,7 +60,9 @@ class TGMinerClient:
         if session_path_dir:
             os.makedirs(session_path_dir, exist_ok=True)
 
-        pyrogram.Client.DOWNLOAD_WORKERS = 4
+        pyrogram.Client.DOWNLOAD_WORKERS = config.download_workers
+        pyrogram.Client.UPDATES_WORKERS = config.updates_workers
+
         self._client = pyrogram.Client(config.session_path, api_key=(config.api_key.id, config.api_key.hash))
 
         self._client.set_update_handler(self._update_handler)

@@ -7,6 +7,15 @@
 		"hash": "00000000000000000000000000000000"
 	},
 
+
+	/* number of worker threads used to handle file downloads */
+	"download_workers": 4,
+
+
+	/* number of worker threads used to handle telegram API updates */
+	"updates_workers": 1,
+
+
 	/* path for archived chat data, media, and fulltext indexes */
 	"data_dir": "./data",
 
