@@ -42,8 +42,8 @@ def max_attempts(parser):
         except Exception:
             parser.error('Maximum attempts must be an integer.')
 
-        if value < 1:
-            parser.error('Maximum attempts cannot be less than 1.')
+        if value < 0:
+            parser.error('Maximum attempts cannot be less than 0.')
         return value
 
     return test
@@ -57,7 +57,9 @@ def main():
 
     arg_parser.add_argument('--max-attempts', default=10, type=max_attempts(arg_parser),
                             help='Maximum number of attempts to take at generating a message '
-                                 'before returning an empty string. default is 10.')
+                                 'before returning an empty string. Default is 10, passing 0 '
+                                 'means infinite, but there is the possibility of looping '
+                                 'forever if you do that.')
 
     min_max_group = arg_parser.add_argument_group(
         description='The following are optional, but must be specified together.')
@@ -84,12 +86,15 @@ def main():
 
     while True:
         if args.min_length is not None:
-            message = m_text.make_short_sentence(args.max_length, args.min_length)
+            message = m_text.make_short_sentence(args.max_length, args.min_length, tries=1)
         else:
-            message = m_text.make_sentence()
+            message = m_text.make_sentence(tries=1)
 
         if message:
             break
+
+        if args.max_attempts == 0:
+            continue
 
         attempts = attempts + 1
 

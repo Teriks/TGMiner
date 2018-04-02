@@ -48,6 +48,21 @@ def query_limit(parser):
     return test
 
 
+def markov_state_size(parser):
+    def test(value):
+        # noinspection PyBroadException
+        try:
+            value = int(value)
+        except Exception:
+            parser.error('Markov state size must be an integer.')
+
+        if value < 1:
+            parser.error('Markov state size cannot be less than 1.')
+        return value
+
+    return test
+
+
 def main():
     arg_parser = argparse.ArgumentParser(
         description='Preform a fulltext search over stored telegram messages.'
@@ -67,7 +82,15 @@ def main():
                             help='Generate a static markov chain file from the messages in your query results.',
                             metavar='OUT_FILE')
 
+    arg_parser.add_argument('--markov-state-size', default=2,
+                            help='The number of words to use in the markov model\'s state, default is 2. '
+                                 'Must be used in conjunction with --markov.',
+                            type=markov_state_size(arg_parser))
+
     args = arg_parser.parse_args()
+
+    if args.markov_state_size is not None and args.markov is None:
+        arg_parser.error('Must be using the --markov option to use --markov-state-size.')
 
     config = None  # hush intellij highlighted undeclared variable use warning
 
@@ -148,7 +171,9 @@ def main():
         for idx, v in enumerate(markov_input):
             markov_input[idx] = re.split('\s', v)
 
-        text = markovify.Text(input_text=None, parsed_sentences=markov_input)
+        text = markovify.Text(input_text=None,
+                              parsed_sentences=markov_input,
+                              state_size=args.markov_state_size)
 
         try:
             with open(args.markov, 'w', encoding='utf-8') as m_out:

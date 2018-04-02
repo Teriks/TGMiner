@@ -131,6 +131,23 @@ using a combination of the packaged ``tgminer-search`` and ``tgminer-markov`` co
     tgminer-markov chainfile.json --min-length 100 --max-length 500
 
 
+    # Generate a chain with an alternate word state size
+
+    tgminer-search "chat:my-funniest-chat *" --limit 0 --markov chainfile.json --markov-state-size 5
+
+
+    # If your frequently getting an empty result, try bumping the number
+    # of generation attempts up
+
+    tgminer-markov chainfile.json --max-attempts 100
+
+
+    # Try forever until something is generated at the risk of an
+    # infinite loop, handle with a timeout by yourself or something
+
+    tgminer-markov chainfile.json --max-attempts 0
+
+
 Install
 =======
 
