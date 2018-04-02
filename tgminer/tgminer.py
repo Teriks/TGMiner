@@ -296,18 +296,22 @@ class TGMinerClient:
         indexed_media_info = None
 
         if isinstance(message.media, pyrogram.api.types.MessageMediaPhoto):
-            name = str(uuid.uuid4())
 
-            media_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
+            if self._config.download_photos:
+                name = str(uuid.uuid4())
 
-            indexed_media_info = '(Photo: {})'.format(media_file_path)
+                media_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
+
+                self._client.download_media(message, file_name=media_file_path)
+
+                indexed_media_info = '(Photo: {})'.format(media_file_path)
+            else:
+                indexed_media_info = '(Photo: PHOTO DOWNLOADS DISABLED)'
 
             indexed_message = message.message
 
             log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
                                           .format(message.message) if message.message else '')
-
-            self._client.download_media(message, file_name=media_file_path)
 
         elif isinstance(message.media, pyrogram.api.types.MessageMediaDocument):
             name = str(uuid.uuid4())
@@ -325,21 +329,28 @@ class TGMinerClient:
 
                 og_doc_filename = filename_attr.file_name
 
-                if self._config.docname_filter.match(filename_attr.file_name):
+                if self._config.download_documents and self._config.docname_filter.match(filename_attr.file_name):
                     self._client.download_media(message, file_name=doc_file_path)
                 else:
                     doc_filter_discarded = True
 
             except StopIteration:
-                if self._config.docname_filter.match(''):
+                if self._config.download_documents and self._config.docname_filter.match(''):
                     self._client.download_media(message, file_name=doc_file_path)
                 else:
                     doc_filter_discarded = True
 
+            displayed_path = doc_file_path
+
+            if not self._config.download_documents:
+                displayed_path = "DOCUMENT DOWNLOADS DISABLED"
+            elif doc_filter_discarded:
+                displayed_path = "DOCNAME_FILTER DISCARDED FILE"
+
             indexed_media_info = '(Document: "{}"{}: {})'.format(
                 message.media.document.mime_type,
                 ' - "{}"'.format(og_doc_filename) if og_doc_filename else '',
-                'DOCNAME_FILTER DISCARDED FILE' if doc_filter_discarded else doc_file_path)
+                displayed_path)
 
             log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
                                           .format(message.message) if message.message else '')
@@ -350,10 +361,9 @@ class TGMinerClient:
 
         self._write_index_msg(user, to_user, indexed_media_info, indexed_message, chat_slug, to_id)
 
-        log_entry = '{} chat="{}" to_id="{}"{} | {}'.format(self._timestamp(), chat_slug, to_id,
-                                                            ' to {}'.format(
-                                                                self._get_log_username(to_user)) if to_user else '',
-                                                            log_entry)
+        log_entry = '{} chat="{}" to_id="{}"{} | {}'.format(
+            self._timestamp(), chat_slug, to_id, ' to {}'.format(
+                self._get_log_username(to_user)) if to_user else '', log_entry)
 
         if self._config.chat_stdout:
             print(log_entry)

@@ -67,6 +67,10 @@ class TGMinerConfig:
                 'id': dschema.prop(default='.*', type='regex')
             },
 
+            'download_photos': dschema.prop(default=True, type=bool),
+
+            'download_documents': dschema.prop(default=True, type=bool),
+
             'docname_filter': dschema.prop(default='.*', type='regex'),
 
             'log_direct_chats': dschema.prop(default=True, type=bool),

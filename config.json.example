@@ -62,6 +62,16 @@
 	/* Should group/channel chats ever be logged? */
 	"log_group_chats": true,
 
+
+	/* Should photos be downloaded? */
+
+	"download_photos": true,
+
+
+	/* Should document/file attachments be downloaded? */
+
+	"download_documents": true,
+
 	/*
 	   Only download document attachments who's names match this regex,
 	   This does not apply to photo attachments, as their original
