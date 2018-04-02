@@ -82,7 +82,7 @@ def main():
                             help='Generate a static markov chain file from the messages in your query results.',
                             metavar='OUT_FILE')
 
-    arg_parser.add_argument('--markov-state-size', default=2,
+    arg_parser.add_argument('--markov-state-size', default=None,
                             help='The number of words to use in the markov model\'s state, default is 2. '
                                  'Must be used in conjunction with --markov.',
                             type=markov_state_size(arg_parser))
@@ -91,6 +91,9 @@ def main():
 
     if args.markov_state_size is not None and args.markov is None:
         arg_parser.error('Must be using the --markov option to use --markov-state-size.')
+
+    if args.markov_state_size is None:
+        args.markov_state_size = 2
 
     config = None  # hush intellij highlighted undeclared variable use warning
 
@@ -168,6 +171,10 @@ def main():
                                   hit['message']))
 
     if args.markov:
+        if len(markov_input) == 0:
+            print('Query returned no messages!', file=sys.stderr)
+            exit(2)
+
         for idx, v in enumerate(markov_input):
             markov_input[idx] = re.split('\s', v)
 
@@ -181,6 +188,7 @@ def main():
         except OSError as e:
             print('Could not write markov chain to file "{}", error: {}'
                   .format(args.markov, e), file=sys.stderr)
+            exit(2)
 
 
 if __name__ == '__main__':
