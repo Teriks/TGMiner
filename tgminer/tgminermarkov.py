@@ -3,6 +3,8 @@ import json
 
 import markovify
 
+from tgminer import exits
+
 
 def min_output_length(parser):
     def test(value):
@@ -79,7 +81,7 @@ def main():
             m_text = markovify.Text.from_dict(json.load(chain))
     except Exception as e:
         print('Error reading markov chain file "{}", message: {}'.format(args.chain, e))
-        exit(1)
+        exit(exits.EX_NOINPUT)
         return  # intellij wants this
 
     attempts = 0
@@ -99,7 +101,7 @@ def main():
         attempts = attempts + 1
 
         if attempts == args.max_attempts:
-            exit(2)
+            exit(exits.EX_SOFTWARE)
 
     print(message)
 

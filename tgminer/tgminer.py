@@ -38,6 +38,7 @@ import whoosh.index
 from slugify import slugify
 
 import tgminer.fulltext
+from tgminer import exits
 from tgminer.config import TGMinerConfig, TGMinerConfigException
 
 # silence pyrogram message on start
@@ -378,10 +379,10 @@ def main():
             TGMinerClient(TGMinerConfig(args.config)).start()
         except TGMinerConfigException as e:
             print(str(e), file=sys.stderr)
-            exit(3)
+            exit(exits.EX_CONFIG)
     else:
         print('Config file "{}" does not exist.'.format(os.path.abspath(args.config)), file=sys.stderr)
-        exit(2)
+        exit(exits.EX_NOINPUT)
 
 
 if __name__ == '__main__':

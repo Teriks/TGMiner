@@ -32,6 +32,8 @@ from whoosh.qparser import QueryParser, sys
 import tgminer.fulltext
 from tgminer.config import TGMinerConfig, TGMinerConfigException
 
+from tgminer import exits
+
 
 def query_limit(parser):
     def test(value):
@@ -102,10 +104,10 @@ def main():
             config = TGMinerConfig(args.config)
         except TGMinerConfigException as e:
             print(str(e), file=sys.stderr)
-            exit(3)
+            exit(exits.EX_CONFIG)
     else:
         print('Cannot find tgminer config file: "{}"'.format(args.config))
-        exit(2)
+        exit(exits.EX_NOINPUT)
 
     index = whoosh.index.open_dir(os.path.join(config.data_dir, 'indexdir'))
 
@@ -175,7 +177,7 @@ def main():
 
         if len(markov_input) == 0:
             print('Query returned no messages!', file=sys.stderr)
-            exit(2)
+            exit(exits.EX_SOFTWARE)
 
         for idx, v in enumerate(markov_input):
             markov_input[idx] = split_by_spaces.split(v)
@@ -190,7 +192,7 @@ def main():
         except OSError as e:
             print('Could not write markov chain to file "{}", error: {}'
                   .format(args.markov, e), file=sys.stderr)
-            exit(2)
+            exit(exits.EX_CANTCREAT)
 
 
 if __name__ == '__main__':
