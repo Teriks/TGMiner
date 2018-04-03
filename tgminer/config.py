@@ -97,6 +97,8 @@ class TGMinerConfig:
 
             'download_documents': dschema.prop(default=True, type=bool),
 
+            'write_raw_logs': dschema.prop(default=True, type=bool),
+
             'docname_filter': dschema.prop(default='.*', type=regex_type),
 
             'log_direct_chats': dschema.prop(default=True, type=bool),

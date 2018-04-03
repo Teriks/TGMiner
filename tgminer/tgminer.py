@@ -295,7 +295,11 @@ class TGMinerClient:
                                     from_id=user.id):
             return
 
-        os.makedirs(log_folder, exist_ok=True)
+        if (self._config.download_photos or
+                self._config.download_documents or
+                self._config.write_raw_logs):
+
+            os.makedirs(log_folder, exist_ok=True)
 
         indexed_media_info = None
 
@@ -331,8 +335,9 @@ class TGMinerClient:
         if self._config.chat_stdout:
             print(log_entry)
 
-        with open(os.path.join(log_folder, log_name), 'a', encoding='utf-8') as file_handle:
-            print(log_entry, file=file_handle)
+        if self._config.write_raw_logs:
+            with open(os.path.join(log_folder, log_name), 'a', encoding='utf-8') as file_handle:
+                print(log_entry, file=file_handle)
 
     def _handle_media_message(self, log_folder, log_user_name, message):
 

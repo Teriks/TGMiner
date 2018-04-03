@@ -72,6 +72,12 @@
 	"log_group_chats": true,
 
 
+	/* Should plain text logs be written in the directories "data_dir/channels/id",
+	   and also under the "direct_chats" directory? /*
+
+	"write_raw_logs": true,
+
+
 	/* Should photos be downloaded? */
 
 	"download_photos": true,
