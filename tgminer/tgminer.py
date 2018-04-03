@@ -338,7 +338,7 @@ class TGMinerClient:
 
     def _handle_media_message(self, log_folder, log_user_name, message):
 
-        doc_file_path = os.path.abspath(os.path.join(log_folder, uuid.uuid4()) + self.get_media_ext(message))
+        doc_file_path = os.path.abspath(os.path.join(log_folder, str(uuid.uuid4())) + self.get_media_ext(message))
 
         indexed_message = message.message
 
@@ -382,7 +382,7 @@ class TGMinerClient:
     def _handle_photo_message(self, log_folder, log_user_name, message):
         if self._config.download_photos:
 
-            media_file_path = os.path.abspath(os.path.join(log_folder, uuid.uuid4()) + self.get_media_ext(message))
+            media_file_path = os.path.abspath(os.path.join(log_folder, str(uuid.uuid4())) + self.get_media_ext(message))
 
             self._client.download_media(message, file_name=media_file_path)
 
