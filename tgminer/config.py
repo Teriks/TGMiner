@@ -24,6 +24,18 @@ import re
 import dschema
 import jsoncomment
 
+import os
+
+CONFIG_ENV_VAR = 'TGMINER_CONFIG'
+"""Environmental var for specifying config location."""
+
+
+def get_config_path(command_line_path):
+    env_config = os.environ.get(CONFIG_ENV_VAR,
+                                os.path.join(os.getcwd(), 'config.json'))
+
+    return os.path.abspath(command_line_path or env_config)
+
 
 class TGMinerConfigException(Exception):
     def __init__(self, message):

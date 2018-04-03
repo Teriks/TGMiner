@@ -39,7 +39,7 @@ from slugify import slugify
 
 import tgminer.fulltext
 from tgminer import exits
-from tgminer.config import TGMinerConfig, TGMinerConfigException
+import tgminer.config
 
 # silence pyrogram message on start
 pyrogram.session.Session.notice_displayed = True
@@ -403,19 +403,21 @@ class TGMinerClient:
 def main():
     arg_parser = argparse.ArgumentParser(description='Passive telegram mining client.')
 
-    arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".',
-                            default=os.path.join(os.getcwd(), 'config.json'))
+    arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".')
 
     args = arg_parser.parse_args()
 
-    if os.path.isfile(args.config):
+    config_path = tgminer.config.get_config_path(args.config)
+
+    if os.path.isfile(config_path):
         try:
-            TGMinerClient(TGMinerConfig(args.config)).start()
-        except TGMinerConfigException as e:
+            # noinspection PyTypeChecker
+            TGMinerClient(tgminer.config.TGMinerConfig(config_path)).start()
+        except tgminer.config.TGMinerConfigException as e:
             print(str(e), file=sys.stderr)
             exit(exits.EX_CONFIG)
     else:
-        print('Config file "{}" does not exist.'.format(os.path.abspath(args.config)), file=sys.stderr)
+        print('Config file "{}" does not exist.'.format(config_path), file=sys.stderr)
         exit(exits.EX_NOINPUT)
 
 

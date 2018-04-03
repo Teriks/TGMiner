@@ -12,8 +12,14 @@ This project is experimental and probably barely usable or practical at the mome
 Client
 ======
 
-tgminer is the mining client and is packaged as an installed command named ``tgminer``,
-see ``config.json.example`` for the config file example.  Also see ``tgminer --help``
+**tgminer** is the mining client and is packaged as a command named ``tgminer``,
+see ``config.json.example`` for the config file example.  Also see ``tgminer --help``.
+
+**tgminer** can be started with: ``tgminer --config path/config.json``.
+
+The configuration file can also be specified with the environmental
+variable ``TGMINER_CONFIG``. Defining the path with ``--config`` will
+override the environmental variable.
 
 If the session file mentioned in ``config.json`` is not created yet, you will be prompted
 to log into telegram on the console, which will create the session file for your account.
@@ -23,9 +29,14 @@ After the session file is created you will not need to log into telegram again.
 tgminer-search
 ==============
 
-tgminer-search is the full text search tool for searching through the telegram logs.
+**tgminer-search** is the full text search tool for searching through the telegram logs.
 
-tgminer-search needs to be pointed at your ``config.json`` file if it is not in the current working directory, using ``tgminer-search --config path/config.json``.
+**tgminer-search** needs to be pointed at your ``config.json`` file if it is not in the
+current working directory, using ``tgminer-search --config path/config.json``.
+
+You can also set the environmental variable ``TGMINER_CONFIG`` to the correct
+file path and **tgminer-search** will use it unless ``--config`` is specified
+explicitly.
 
 Current searchable fields are:
 

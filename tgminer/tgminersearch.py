@@ -30,7 +30,7 @@ import whoosh.index
 from whoosh.qparser import QueryParser, sys
 
 import tgminer.fulltext
-from tgminer.config import TGMinerConfig, TGMinerConfigException
+import tgminer.config
 
 from tgminer import exits
 
@@ -73,8 +73,7 @@ def main():
     arg_parser.add_argument('query', help='Query text')
 
     arg_parser.add_argument('--config',
-                            help='Path to TGMiner config file, defaults to "CWD/config.json".',
-                            default=os.path.join(os.getcwd(), 'config.json'))
+                            help='Path to TGMiner config file, defaults to "CWD/config.json".')
 
     arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10',
                             type=query_limit(arg_parser),
@@ -99,14 +98,16 @@ def main():
 
     config = None  # hush intellij highlighted undeclared variable use warning
 
-    if os.path.isfile(args.config):
+    config_path = tgminer.config.get_config_path(args.config)
+
+    if os.path.isfile(config_path):
         try:
-            config = TGMinerConfig(args.config)
-        except TGMinerConfigException as e:
+            config = tgminer.config.TGMinerConfig(config_path)
+        except tgminer.config.TGMinerConfigException as e:
             print(str(e), file=sys.stderr)
             exit(exits.EX_CONFIG)
     else:
-        print('Cannot find tgminer config file: "{}"'.format(args.config))
+        print('Cannot find tgminer config file: "{}"'.format(config_path))
         exit(exits.EX_NOINPUT)
 
     index = whoosh.index.open_dir(os.path.join(config.data_dir, 'indexdir'))
