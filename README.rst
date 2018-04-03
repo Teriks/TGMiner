@@ -21,6 +21,9 @@ The configuration file can also be specified with the environmental
 variable ``TGMINER_CONFIG``. Defining the path with ``--config`` will
 override the environmental variable.
 
+If neither ``TGMINER_CONFIG`` or ``--config`` is used, **tgminer** will look
+in the current working directory for a file named ``config.json``.
+
 If the session file mentioned in ``config.json`` is not created yet, you will be prompted
 to log into telegram on the console, which will create the session file for your account.
 
