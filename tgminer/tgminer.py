@@ -297,8 +297,6 @@ class TGMinerClient:
 
         os.makedirs(log_folder, exist_ok=True)
 
-        log_file = os.path.join(log_folder, log_name)
-
         indexed_media_info = None
 
         if isinstance(message.media, pyrogram.api.types.MessageMediaPhoto):
@@ -333,7 +331,7 @@ class TGMinerClient:
         if self._config.chat_stdout:
             print(log_entry)
 
-        with open(log_file, 'a', encoding='utf-8') as file_handle:
+        with open(os.path.join(log_folder, log_name), 'a', encoding='utf-8') as file_handle:
             print(log_entry, file=file_handle)
 
     def _handle_media_message(self, log_folder, log_user_name, message):
