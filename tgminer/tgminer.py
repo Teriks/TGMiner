@@ -242,7 +242,7 @@ class TGMinerClient:
         is_peer_channel = isinstance(message.to_id, pyrogram.api.types.PeerChannel)
         is_peer_chat = isinstance(message.to_id, pyrogram.api.types.PeerChat)
 
-        if is_peer_channel or is_peer_chat and not self._config.log_group_chats:
+        if (is_peer_channel or is_peer_chat) and not self._config.log_group_chats:
             return
 
         user = users[message.from_id]
