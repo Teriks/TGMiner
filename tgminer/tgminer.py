@@ -22,12 +22,12 @@ import argparse
 import datetime
 import errno
 import mimetypes
+import os
 import sys
 import threading
 import uuid
 
 import fasteners
-import os
 import pyrogram
 import pyrogram.api
 import pyrogram.api.errors
@@ -155,22 +155,24 @@ class TGMinerClient:
         else:
             return 'None'
 
-    def _write_index_msg(self, user, to_user, media, message, chat_slug, to_id):
+    def _index_log_message(self, from_user, to_user, to_id, media_info, message, chat_slug):
         """
-        :type chat_slug: str
-        :type message: str
-        :type media: str
+        :type from_user: pyrogram.api.types.User
         :type to_user: pyrogram.api.types.User
-        :type user: pyrogram.api.types.User
+        :type to_id: int
+        :type media_info: str
+        :type message: str
+        :type chat_slug: str
+
         """
 
         # lock in process and multiprocess lock
         with self._index_lock, fasteners.InterProcessLock(self._index_lock_path):
             writer = self._index.writer()
 
-            username = user.username
+            username = from_user.username
 
-            alias = self._get_user_alias(user)
+            alias = self._get_user_alias(from_user)
 
             if to_user:
                 to_username = to_user.username
@@ -182,9 +184,9 @@ class TGMinerClient:
 
             writer.add_document(username=username, alias=alias,
                                 to_username=to_username, to_alias=to_alias,
-                                media=media, message=message,
+                                media=media_info, message=message,
                                 timestamp=datetime.datetime.now(),
-                                chat=chat_slug, to_id=to_id)
+                                chat=chat_slug, to_id=str(to_id))
             writer.commit()
 
     def _timestamp(self):
@@ -248,17 +250,20 @@ class TGMinerClient:
         user = users[message.from_id]
 
         user_name = user.username if user.username else ''
-        user_alias = self._get_user_alias(user)
 
+        user_alias = self._get_user_alias(user)
         log_user_name = self._get_log_username(user)
 
         chat_slug = TGMinerClient.DIRECT_CHATS_SLUG
         log_folder = os.path.join(self._config.data_dir, TGMinerClient.DIRECT_CHATS_SLUG)
         log_name = 'log.txt'
-        channel = None
+
+        to_user = None
 
         if is_peer_channel or is_peer_chat:
             channel = chats[message.to_id.channel_id] if is_peer_channel else chats[message.to_id.chat_id]
+            to_id = channel.id
+
             chat_slug = slugify(channel.title)
 
             if self._filter_group_chat_check(title=channel.title,
@@ -273,23 +278,22 @@ class TGMinerClient:
                                       str(channel.id))
             log_name = chat_slug + '.log.txt'
 
-        if is_peer_user:
+        elif is_peer_user:
 
             to_user = users[message.to_id.user_id]
+            to_id = to_user.id
 
             if self._filter_direct_chat_check(username=user_name,
                                               alias=user_alias,
                                               from_id=user.id):
                 return
         else:
-            to_user = None
+            return
 
         if self._filter_users_check(username=user_name,
                                     alias=user_alias,
                                     from_id=user.id):
             return
-
-        to_id = str(channel.id if channel else message.to_id.user_id)
 
         os.makedirs(log_folder, exist_ok=True)
 
@@ -299,79 +303,99 @@ class TGMinerClient:
 
         if isinstance(message.media, pyrogram.api.types.MessageMediaPhoto):
 
-            if self._config.download_photos:
-                name = str(uuid.uuid4())
-
-                media_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
-
-                self._client.download_media(message, file_name=media_file_path)
-
-                indexed_media_info = '(Photo: {})'.format(media_file_path)
-            else:
-                indexed_media_info = '(Photo: PHOTO DOWNLOADS DISABLED)'
-
-            indexed_message = message.message
-
-            log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
-                                          .format(message.message) if message.message else '')
+            indexed_media_info, indexed_message, short_log_entry = self._handle_photo_message(
+                log_folder,
+                log_user_name,
+                message)
 
         elif isinstance(message.media, pyrogram.api.types.MessageMediaDocument):
-            name = str(uuid.uuid4())
 
-            doc_file_path = os.path.abspath(os.path.join(log_folder, name) + self.get_media_ext(message))
-
-            indexed_message = message.message
-
-            doc_filter_discarded = False
-            og_doc_filename = None
-
-            try:
-                filename_attr = (x for x in message.media.document.attributes
-                                 if isinstance(x, pyrogram.api.types.DocumentAttributeFilename)).__next__()
-
-                og_doc_filename = filename_attr.file_name
-
-                if self._config.download_documents and self._config.docname_filter.match(filename_attr.file_name):
-                    self._client.download_media(message, file_name=doc_file_path)
-                else:
-                    doc_filter_discarded = True
-
-            except StopIteration:
-                if self._config.download_documents and self._config.docname_filter.match(''):
-                    self._client.download_media(message, file_name=doc_file_path)
-                else:
-                    doc_filter_discarded = True
-
-            displayed_path = doc_file_path
-
-            if not self._config.download_documents:
-                displayed_path = "DOCUMENT DOWNLOADS DISABLED"
-            elif doc_filter_discarded:
-                displayed_path = "DOCNAME_FILTER DISCARDED FILE"
-
-            indexed_media_info = '(Document: "{}"{}: {})'.format(
-                message.media.document.mime_type,
-                ' - "{}"'.format(og_doc_filename) if og_doc_filename else '',
-                displayed_path)
-
-            log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
-                                          .format(message.message) if message.message else '')
+            indexed_media_info, indexed_message, short_log_entry = self._handle_media_message(
+                log_folder,
+                log_user_name,
+                message)
 
         else:
             indexed_message = message.message
-            log_entry = '{}: {}'.format(log_user_name, message.message)
+            short_log_entry = '{}: {}'.format(log_user_name, message.message)
 
-        self._write_index_msg(user, to_user, indexed_media_info, indexed_message, chat_slug, to_id)
+        self._index_log_message(from_user=user,
+                                to_user=to_user,
+                                to_id=to_id,
+                                media_info=indexed_media_info,
+                                message=indexed_message,
+                                chat_slug=chat_slug)
 
         log_entry = '{} chat="{}" to_id="{}"{} | {}'.format(
             self._timestamp(), chat_slug, to_id, ' to {}'.format(
-                self._get_log_username(to_user)) if to_user else '', log_entry)
+                self._get_log_username(to_user)) if to_user else '', short_log_entry)
 
         if self._config.chat_stdout:
             print(log_entry)
 
-        with open(log_file, 'a', encoding='utf-8') as fhandle:
-            print(log_entry, file=fhandle)
+        with open(log_file, 'a', encoding='utf-8') as file_handle:
+            print(log_entry, file=file_handle)
+
+    def _handle_media_message(self, log_folder, log_user_name, message):
+
+        doc_file_path = os.path.abspath(os.path.join(log_folder, uuid.uuid4()) + self.get_media_ext(message))
+
+        indexed_message = message.message
+
+        doc_filter_discarded = False
+        og_doc_filename = None
+
+        try:
+            filename_attr = (x for x in message.media.document.attributes
+                             if isinstance(x, pyrogram.api.types.DocumentAttributeFilename)).__next__()
+
+            og_doc_filename = filename_attr.file_name
+
+            if self._config.download_documents and self._config.docname_filter.match(filename_attr.file_name):
+                self._client.download_media(message, file_name=doc_file_path)
+            else:
+                doc_filter_discarded = True
+
+        except StopIteration:
+            if self._config.download_documents and self._config.docname_filter.match(''):
+                self._client.download_media(message, file_name=doc_file_path)
+            else:
+                doc_filter_discarded = True
+
+        displayed_path = doc_file_path
+
+        if not self._config.download_documents:
+            displayed_path = "DOCUMENT DOWNLOADS DISABLED"
+        elif doc_filter_discarded:
+            displayed_path = "DOCNAME_FILTER DISCARDED FILE"
+
+        indexed_media_info = '(Document: "{}"{}: {})'.format(
+            message.media.document.mime_type,
+            ' - "{}"'.format(og_doc_filename) if og_doc_filename else '',
+            displayed_path)
+
+        log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
+                                      .format(message.message) if message.message else '')
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_photo_message(self, log_folder, log_user_name, message):
+        if self._config.download_photos:
+
+            media_file_path = os.path.abspath(os.path.join(log_folder, uuid.uuid4()) + self.get_media_ext(message))
+
+            self._client.download_media(message, file_name=media_file_path)
+
+            indexed_media_info = '(Photo: {})'.format(media_file_path)
+        else:
+            indexed_media_info = '(Photo: PHOTO DOWNLOADS DISABLED)'
+
+        indexed_message = message.message
+
+        log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
+                                      .format(message.message) if message.message else '')
+
+        return indexed_media_info, indexed_message, log_entry
 
     def start(self):
         self._client.start()
