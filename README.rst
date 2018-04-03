@@ -43,15 +43,15 @@ explicitly.
 
 Current searchable fields are:
 
-* message (default search field, message text content) - Stemming Analysis matching
-* alias (posting users alias) - Exact matches only
-* username (posting users @username) - Exact matches only
-* to_alias (receiving users alias) - Exact matches only
-* to_username (receiving users @username) - Exact matches only
-* to_id (Channel ID or User ID) - Exact matches only
-* chat (slugified group chat name) - Exact matches only
-* media (media field, see query examples..) - Stemming Analysis matching
-* timestamp (chat log timestamp) - Exact matches and ranges
+* **message** (default search field, message text content) - Stemming Analysis matching
+* **alias** (posting users alias) - Exact matches only
+* **username** (posting users @username) - Exact matches only
+* **to_alias** (receiving users alias) - Exact matches only
+* **to_username** (receiving users @username) - Exact matches only
+* **to_id** (Channel ID or User ID) - Exact matches only
+* **chat** (slugified group chat name) - Exact matches only
+* **media** (media field, see query examples..) - Stemming Analysis matching
+* **timestamp** (chat log timestamp) - Exact matches and ranges
 
 
 **whoosh** is used to provide full text search
