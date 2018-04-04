@@ -7,8 +7,6 @@ It makes all archived chat content searchable via full text indexing with the wh
 
 TGMiner utilizes the **pyrogram** python telegram client library, and **whoosh** for full text search.
 
-This project is experimental and probably barely usable or practical at the moment, currently in proof of concept mode.
-
 The client (tgminer)
 ====================
 
