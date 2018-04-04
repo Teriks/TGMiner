@@ -21,11 +21,14 @@
 import argparse
 import datetime
 import errno
+import json
 import mimetypes
 import os
 import sys
 import threading
+import traceback
 import uuid
+from collections import OrderedDict
 
 import fasteners
 import pyrogram
@@ -84,7 +87,7 @@ class TGMinerClient:
                 self._index = whoosh.index.open_dir(self._indexdir)
 
     @staticmethod
-    def get_media_ext(message):
+    def _get_media_ext(message):
         """
         :type message: pyrogram.api.types.Message
         :return: str file extension
@@ -298,7 +301,6 @@ class TGMinerClient:
         if (self._config.download_photos or
                 self._config.download_documents or
                 self._config.write_raw_logs):
-
             os.makedirs(log_folder, exist_ok=True)
 
         indexed_media_info = None
@@ -341,7 +343,7 @@ class TGMinerClient:
 
     def _handle_media_message(self, log_folder, log_user_name, message):
 
-        doc_file_path = os.path.abspath(os.path.join(log_folder, str(uuid.uuid4())) + self.get_media_ext(message))
+        doc_file_path = os.path.abspath(os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(message))
 
         indexed_message = message.message
 
@@ -382,10 +384,57 @@ class TGMinerClient:
 
         return indexed_media_info, indexed_message, log_entry
 
+    def get_chats_info(self):
+        r = self._client.send(pyrogram.api.functions.messages.GetAllChats([]))
+
+        data = []
+
+        for i in r.chats:
+
+            storage = os.path.abspath(os.path.join(self._config.data_dir, self.CHANNELS_DIR_NAME, str(i.id)))
+            if not os.path.isdir(storage):
+                storage = None
+
+            data.append(OrderedDict([('type', type(i).__name__),
+                                     ('id', i.id),
+                                     ('title', i.title),
+                                     ('slug', slugify(i.title)),
+                                     ('storage', storage)]))
+
+        return data
+
+    def dump_chats_info(self, file):
+        print(json.dumps(self.get_chats_info(), indent=4, sort_keys=False), file=file)
+
+    def get_peers_info(self):
+        r = self._client.send(pyrogram.api.functions.users.GetUsers([*self._client.peers_by_id.values()]))
+
+        data = []
+
+        storage = os.path.abspath(os.path.join(self._config.data_dir, self.DIRECT_CHATS_SLUG))
+
+        if not os.path.isdir(storage):
+            storage = None
+
+        for user in r:
+            data.append(OrderedDict([('type', 'User'), ('id', user.id),
+                                     ('alias', self._get_user_alias(user)),
+                                     ('username', user.username),
+                                     ('storage', storage)]))
+
+        return data
+
+    def dump_peers_info(self, file):
+        print(json.dumps(self.get_peers_info(), indent=4, sort_keys=False), file=file)
+
+    def dump_chats_and_peers_info(self, file):
+        print(json.dumps(self.get_chats_info() + self.get_peers_info(), indent=4, sort_keys=False), file=file)
+
     def _handle_photo_message(self, log_folder, log_user_name, message):
         if self._config.download_photos:
 
-            media_file_path = os.path.abspath(os.path.join(log_folder, str(uuid.uuid4())) + self.get_media_ext(message))
+            media_file_path = os.path.abspath(
+                os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(message))
 
             self._client.download_media(message, file_name=media_file_path)
 
@@ -402,28 +451,68 @@ class TGMinerClient:
 
     def start(self):
         self._client.start()
+
+    def stop(self):
+        self._client.stop()
+
+    def idle(self):
         self._client.idle()
 
 
 def main():
     arg_parser = argparse.ArgumentParser(description='Passive telegram mining client.')
 
-    arg_parser.add_argument('--config', help='Path to TGMiner config file, defaults to "CWD/config.json".')
+    arg_parser.add_argument('--config',
+                            help='Path to TGMiner config file, defaults to "CWD/config.json". '
+                                 'This will override the environmental variable TGMINER_CONFIG if it was defined.')
+
+    arg_parser.add_argument('--show-chats',
+                            help='Print information about the chats/channels you are in and exit. '
+                                 'The information is printed as a JSON list containing objects.',
+                            action='store_true')
+
+    arg_parser.add_argument('--show-peers',
+                            help='Print information about peer-users the client can see and exit. '
+                                 'The information is printed as a JSON list containing objects. '
+                                 'Using this with --show-chats combines the information from both options '
+                                 'into one JSON list.',
+                            action='store_true')
 
     args = arg_parser.parse_args()
 
     config_path = tgminer.config.get_config_path(args.config)
 
-    if os.path.isfile(config_path):
-        try:
-            # noinspection PyTypeChecker
-            TGMinerClient(tgminer.config.TGMinerConfig(config_path)).start()
-        except tgminer.config.TGMinerConfigException as e:
-            print(str(e), file=sys.stderr)
-            exit(exits.EX_CONFIG)
-    else:
+    if not os.path.isfile(config_path):
         print('Config file "{}" does not exist.'.format(config_path), file=sys.stderr)
         exit(exits.EX_NOINPUT)
+
+    try:
+        # noinspection PyTypeChecker
+        client = TGMinerClient(tgminer.config.TGMinerConfig(config_path))
+    except tgminer.config.TGMinerConfigException as e:
+        print(str(e), file=sys.stderr)
+        exit(exits.EX_CONFIG)
+        return
+
+    try:
+        if args.show_chats or args.show_peers:
+            try:
+                client.start()
+                if args.show_chats and args.show_peers:
+                    client.dump_chats_and_peers_info(sys.stdout)
+                elif args.show_chats:
+                    client.dump_chats_info(sys.stdout)
+                elif args.show_peers:
+                    client.dump_peers_info(sys.stdout)
+            finally:
+                client.stop()
+        else:
+            client.start()
+            client.idle()
+    except Exception:
+        print('Client error:\n\n', file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        exit(exits.EX_SOFTWARE)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
-TGMiner
-=======
+About TGMiner
+=============
 
 TGMiner is a telegram client bot for archiving and logging chat data from direct chats and group chats.
 
@@ -9,11 +9,15 @@ TGMiner utilizes the **pyrogram** python telegram client library, and **whoosh**
 
 This project is experimental and probably barely usable or practical at the moment, currently in proof of concept mode.
 
-Client
-======
+The client (tgminer)
+====================
 
 **tgminer** is the mining client and is packaged as a command named ``tgminer``,
 see ``config.json.example`` for the config file example.  Also see ``tgminer --help``.
+
+
+Configuring and Running
+-----------------------
 
 **tgminer** can be started with: ``tgminer --config path/config.json``.
 
@@ -28,6 +32,133 @@ If the session file mentioned in ``config.json`` is not created yet, you will be
 to log into telegram on the console, which will create the session file for your account.
 
 After the session file is created you will not need to log into telegram again.
+
+
+Listing Chats and Peers
+-----------------------
+
+The client can print information about the chats you are in and then
+exit with the use of ``--show-chats``.
+
+
+``--show-chats`` will print the information as a JSON list like this one:
+
+
+The **storage** field indicates where TGMiner is storing plain text logs and
+media downloads for the chat/channel.
+
+If **storage** does not exist (IE. is **null**) that means that TGMiner has not stored any
+plain text logs or media for the chat, either because of how you configured TGMiner
+or because there has been no activity in that chat since TGMiner was first started.
+
+
+.. code-block:: json
+
+    [
+        {
+            "type": "Chat",
+            "id": 123456789,
+            "title": "Chat Title (And maybe funny special characters)",
+            "slug": "chat-title",
+            "storage": "data_dir/channels/123456789"
+        },
+        {
+            "type": "Channel",
+            "id": 987654321,
+            "title": "Channel Title (And maybe funny special characters)",
+            "slug": "channel-title",
+            "storage": "data_dir/channels/987654321"
+        }
+    ]
+
+It can also print information about the peer-users the client can see, IE.
+People you have opened direct chats with.  Using ``--show-peers``.
+
+``--show-peers`` will also print a JSON list.
+
+
+.. code-block:: json
+
+    [
+        {
+            "type": "User",
+            "id": 123456789,
+            "alias": "Firstname Lastname",
+            "username": "raw_username",
+            "storage": "data_dir/direct_chats"
+        },
+        {
+            "type": "User",
+            "id": 987654321,
+            "title": "Firstname Lastname2",
+            "slug": "raw_username2",
+            "storage": "data_dir/direct_chats"
+        }
+    ]
+
+
+If you use ``--show-chats`` and ``--show-peers`` at the same time, the two
+JSON lists will be merged with chats/channels always appearing first regardless
+of argument order.
+
+Example:
+
+.. code-block:: json
+
+    [
+        {
+            "type": "Chat",
+            "id": 123456789,
+            "title": "Chat Title (And maybe funny special characters)",
+            "slug": "chat-title",
+            "storage": "data_dir/channels/123456789"
+        },
+        {
+            "type": "Channel",
+            "id": 987654321,
+            "title": "Channel Title (And maybe funny special characters)",
+            "slug": "channel-title",
+            "storage": "data_dir/channels/987654321"
+        },
+        {
+            "type": "User",
+            "id": 123456789,
+            "alias": "Firstname Lastname",
+            "username": "raw_username",
+            "storage": "data_dir/direct_chats"
+        },
+        {
+            "type": "User",
+            "id": 987654321,
+            "title": "Firstname Lastname2",
+            "slug": "raw_username2",
+            "storage": "data_dir/direct_chats"
+        }
+    ]
+
+
+Current Help Output
+-------------------
+
+.. code-block:: bash
+
+    usage: tgminer [-h] [--config CONFIG] [--show-chats] [--show-peers]
+
+    Passive telegram mining client.
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      --config CONFIG  Path to TGMiner config file, defaults to "CWD/config.json".
+                       This will override the environmental variable
+                       TGMINER_CONFIG if it was defined.
+      --show-chats     Print information about the chats/channels you are in and
+                       exit. The information is printed as a JSON list containing
+                       objects.
+      --show-peers     Print information about peer-users the client can see and
+                       exit. The information is printed as a JSON list containing
+                       objects. Using this with --show-chats combines the
+                       information from both options into one JSON list.
+
 
 tgminer-search
 ==============
@@ -119,6 +250,35 @@ Query Examples:
     tgminer-search "media:Document OR media:Photo AND username:some_username"
 
 
+Current Help Output
+-------------------
+
+.. code-block:: bash
+
+    usage: tgminer-search [-h] [--config CONFIG] [--limit LIMIT]
+                          [--markov OUT_FILE]
+                          [--markov-state-size MARKOV_STATE_SIZE]
+                          query
+
+    Perform a full-text search over stored telegram messages.
+
+    positional arguments:
+      query                 Query text.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --config CONFIG       Path to TGMiner config file, defaults to
+                            "CWD/config.json". This will override the
+                            environmental variable TGMINER_CONFIG if it was
+                            defined.
+      --limit LIMIT         Results limit, 0 for infinite. Default is 10.
+      --markov OUT_FILE     Generate a markov chain file from the messages in your
+                            query results.
+      --markov-state-size MARKOV_STATE_SIZE
+                            The number of words to use in the markov model's
+                            state, default is 2. Must be used in conjunction with
+                            --markov.
+
 tgminer-markov
 ==============
 
@@ -161,6 +321,37 @@ using a combination of the packaged ``tgminer-search`` and ``tgminer-markov`` co
 
     tgminer-markov chainfile.json --max-attempts 0
 
+
+Current Help Output
+-------------------
+
+.. code-block:: bash
+
+    usage: tgminer-markov [-h] [--max-attempts MAX_ATTEMPTS]
+                          [--min-length MIN_LENGTH] [--max-length MAX_LENGTH]
+                          chain
+
+    Read a markov chain file produced by tgminer-search --markov and generate a
+    random message using the pre-processed chat data.
+
+    positional arguments:
+      chain                 JSON markov chain file, produced with: tgminer-search
+                            --markov.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --max-attempts MAX_ATTEMPTS
+                            Maximum number of attempts to take at generating a
+                            message before returning an empty string. The default
+                            is 10, passing 0 means infinite but there is a chance
+                            of looping forever if you do that.
+
+      The following are optional, but must be specified together.
+
+      --min-length MIN_LENGTH
+                            Min output length in characters.
+      --max-length MAX_LENGTH
+                            Max output length in characters.
 
 Install
 =======

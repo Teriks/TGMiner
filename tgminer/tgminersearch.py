@@ -67,20 +67,22 @@ def markov_state_size(parser):
 
 def main():
     arg_parser = argparse.ArgumentParser(
-        description='Preform a fulltext search over stored telegram messages.'
+        description='Perform a full-text search over stored telegram messages.'
     )
 
-    arg_parser.add_argument('query', help='Query text')
+    arg_parser.add_argument('query', help='Query text.')
 
     arg_parser.add_argument('--config',
-                            help='Path to TGMiner config file, defaults to "CWD/config.json".')
+                            help='Path to TGMiner config file, defaults to "CWD/config.json". '
+                                 'This will override the environmental variable '
+                                 'TGMINER_CONFIG if it was defined.')
 
-    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite, default is 10',
+    arg_parser.add_argument('--limit', help='Results limit, 0 for infinite. Default is 10.',
                             type=query_limit(arg_parser),
                             default=10)
 
     arg_parser.add_argument('--markov',
-                            help='Generate a static markov chain file from the messages in your query results.',
+                            help='Generate a markov chain file from the messages in your query results.',
                             metavar='OUT_FILE')
 
     arg_parser.add_argument('--markov-state-size', default=None,

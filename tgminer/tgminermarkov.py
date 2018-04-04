@@ -53,14 +53,15 @@ def max_attempts(parser):
 
 def main():
     arg_parser = argparse.ArgumentParser(
-        description='Read a markov chain file produced by tgminer-search --markov and generate random output.')
+        description='Read a markov chain file produced by tgminer-search --markov '
+                    'and generate a random message using the pre-processed chat data.')
 
     arg_parser.add_argument('chain', help='JSON markov chain file, produced with: tgminer-search --markov.')
 
     arg_parser.add_argument('--max-attempts', default=10, type=max_attempts(arg_parser),
                             help='Maximum number of attempts to take at generating a message '
-                                 'before returning an empty string. Default is 10, passing 0 '
-                                 'means infinite, but there is the possibility of looping '
+                                 'before returning an empty string. The default is 10, passing 0 '
+                                 'means infinite but there is a chance of looping '
                                  'forever if you do that.')
 
     min_max_group = arg_parser.add_argument_group(
