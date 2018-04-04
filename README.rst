@@ -140,7 +140,7 @@ Example:
 Current Help Output
 -------------------
 
-.. code-block:: bash
+.. code-block::
 
     usage: tgminer [-h] [--config CONFIG] [--show-chats] [--show-peers]
 
@@ -253,7 +253,7 @@ Query Examples:
 Current Help Output
 -------------------
 
-.. code-block:: bash
+.. code-block::
 
     usage: tgminer-search [-h] [--config CONFIG] [--limit LIMIT]
                           [--markov OUT_FILE]
@@ -325,7 +325,7 @@ using a combination of the packaged ``tgminer-search`` and ``tgminer-markov`` co
 Current Help Output
 -------------------
 
-.. code-block:: bash
+.. code-block::
 
     usage: tgminer-markov [-h] [--max-attempts MAX_ATTEMPTS]
                           [--min-length MIN_LENGTH] [--max-length MAX_LENGTH]
