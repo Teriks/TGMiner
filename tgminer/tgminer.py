@@ -44,6 +44,10 @@ import tgminer.fulltext
 from tgminer import exits
 import tgminer.config
 
+
+from tgminer.cio import enc_print
+
+
 # silence pyrogram message on start
 pyrogram.session.Session.notice_displayed = True
 
@@ -335,7 +339,7 @@ class TGMinerClient:
                 self._get_log_username(to_user)) if to_user else '', short_log_entry)
 
         if self._config.chat_stdout:
-            print(log_entry)
+            enc_print(log_entry)
 
         if self._config.write_raw_logs:
             with open(os.path.join(log_folder, log_name), 'a', encoding='utf-8') as file_handle:
@@ -404,7 +408,7 @@ class TGMinerClient:
         return data
 
     def dump_chats_info(self, file):
-        print(json.dumps(self.get_chats_info(), indent=4, sort_keys=False), file=file)
+        enc_print(json.dumps(self.get_chats_info(), indent=4, sort_keys=False), file=file)
 
     def get_peers_info(self):
         r = self._client.send(pyrogram.api.functions.users.GetUsers([*self._client.peers_by_id.values()]))
@@ -425,10 +429,10 @@ class TGMinerClient:
         return data
 
     def dump_peers_info(self, file):
-        print(json.dumps(self.get_peers_info(), indent=4, sort_keys=False), file=file)
+        enc_print(json.dumps(self.get_peers_info(), indent=4, sort_keys=False), file=file)
 
     def dump_chats_and_peers_info(self, file):
-        print(json.dumps(self.get_chats_info() + self.get_peers_info(), indent=4, sort_keys=False), file=file)
+        enc_print(json.dumps(self.get_chats_info() + self.get_peers_info(), indent=4, sort_keys=False), file=file)
 
     def _handle_photo_message(self, log_folder, log_user_name, message):
         if self._config.download_photos:
@@ -483,14 +487,14 @@ def main():
     config_path = tgminer.config.get_config_path(args.config)
 
     if not os.path.isfile(config_path):
-        print('Config file "{}" does not exist.'.format(config_path), file=sys.stderr)
+        enc_print('Config file "{}" does not exist.'.format(config_path), file=sys.stderr)
         exit(exits.EX_NOINPUT)
 
     try:
         # noinspection PyTypeChecker
         client = TGMinerClient(tgminer.config.TGMinerConfig(config_path))
     except tgminer.config.TGMinerConfigException as e:
-        print(str(e), file=sys.stderr)
+        enc_print(str(e), file=sys.stderr)
         exit(exits.EX_CONFIG)
         return
 
@@ -510,7 +514,7 @@ def main():
             client.start()
             client.idle()
     except Exception:
-        print('Client error:\n\n', file=sys.stderr)
+        enc_print('Client error:\n\n', file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         exit(exits.EX_SOFTWARE)
 

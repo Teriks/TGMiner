@@ -4,6 +4,7 @@ import json
 import markovify
 
 from tgminer import exits
+from tgminer.cio import enc_print
 
 
 def min_output_length(parser):
@@ -81,7 +82,7 @@ def main():
         with open(args.chain, 'r', encoding='utf-8') as chain:
             m_text = markovify.Text.from_dict(json.load(chain))
     except Exception as e:
-        print('Error reading markov chain file "{}", message: {}'.format(args.chain, e))
+        enc_print('Error reading markov chain file "{}", message: {}'.format(args.chain, e))
         exit(exits.EX_NOINPUT)
         return  # intellij wants this
 
@@ -104,7 +105,7 @@ def main():
         if attempts == args.max_attempts:
             exit(exits.EX_SOFTWARE)
 
-    print(message)
+    enc_print(message)
 
 
 if __name__ == '__main__':

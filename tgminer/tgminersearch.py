@@ -31,6 +31,7 @@ from whoosh.qparser import QueryParser, sys
 
 import tgminer.fulltext
 import tgminer.config
+from tgminer.cio import enc_print
 
 from tgminer import exits
 
@@ -106,10 +107,10 @@ def main():
         try:
             config = tgminer.config.TGMinerConfig(config_path)
         except tgminer.config.TGMinerConfigException as e:
-            print(str(e), file=sys.stderr)
+            enc_print(str(e), file=sys.stderr)
             exit(exits.EX_CONFIG)
     else:
-        print('Cannot find tgminer config file: "{}"'.format(config_path))
+        enc_print('Cannot find tgminer config file: "{}"'.format(config_path))
         exit(exits.EX_NOINPUT)
 
     index = whoosh.index.open_dir(os.path.join(config.data_dir, 'indexdir'))
@@ -163,23 +164,23 @@ def main():
                 if media:
                     caption_part = ' Caption: {}'.format(message) if message else ''
 
-                    print('{} chat="{}" to_id="{}"{} | {}{}: {}{}'
-                          .format(timestamp, chat_slug, to_id, to_user_part,
-                                  alias,
-                                  username_part, media,
-                                  caption_part))
+                    enc_print('{} chat="{}" to_id="{}"{} | {}{}: {}{}'
+                              .format(timestamp, chat_slug, to_id, to_user_part,
+                                      alias,
+                                      username_part, media,
+                                      caption_part))
                 else:
-                    print('{} chat="{}" to_id="{}"{} | {}{}: {}'
-                          .format(timestamp, chat_slug, to_id, to_user_part,
-                                  alias,
-                                  username_part,
-                                  hit['message']))
+                    enc_print('{} chat="{}" to_id="{}"{} | {}{}: {}'
+                              .format(timestamp, chat_slug, to_id, to_user_part,
+                                      alias,
+                                      username_part,
+                                      hit['message']))
 
     if args.markov:
         split_by_spaces = re.compile('\s')
 
         if len(markov_input) == 0:
-            print('Query returned no messages!', file=sys.stderr)
+            enc_print('Query returned no messages!', file=sys.stderr)
             exit(exits.EX_SOFTWARE)
 
         for idx, v in enumerate(markov_input):
@@ -193,8 +194,8 @@ def main():
             with open(args.markov, 'w', encoding='utf-8') as m_out:
                 m_out.write(text.to_json())
         except OSError as e:
-            print('Could not write markov chain to file "{}", error: {}'
-                  .format(args.markov, e), file=sys.stderr)
+            enc_print('Could not write markov chain to file "{}", error: {}'
+                      .format(args.markov, e), file=sys.stderr)
             exit(exits.EX_CANTCREAT)
 
 
