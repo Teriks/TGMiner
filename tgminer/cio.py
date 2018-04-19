@@ -22,7 +22,7 @@ import sys
 import os
 
 
-def enc_print(*args, sep=' ', end='\n', file=None, flush=False, encoding='utf-8'):
+def enc_print(*args, sep: str = ' ', end: str = '\n', file=None, flush=False, encoding: str = 'utf-8'):
     """Prints with default encoding to terminals, prints with a specific encoding to everything else.
 
     :param args: Arguments to print
@@ -52,7 +52,7 @@ def enc_print(*args, sep=' ', end='\n', file=None, flush=False, encoding='utf-8'
         end = ''
 
     if not atty:
-        raw_file.write((sep.join(args)+end).encode(encoding))
+        raw_file.write((sep.join(args) + end).encode(encoding))
     else:
         flush = True
         if hasattr(file, 'encoding'):
@@ -60,8 +60,7 @@ def enc_print(*args, sep=' ', end='\n', file=None, flush=False, encoding='utf-8'
         else:
             encoding = sys.getdefaultencoding()
 
-        raw_file.write((sep.join(args)+end).encode(encoding))
+        raw_file.write((sep.join(args) + end).encode(encoding))
 
     if hasattr(file, 'flush') and flush:
         file.flush()
-

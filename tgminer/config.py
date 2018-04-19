@@ -43,7 +43,7 @@ class TGMinerConfigException(Exception):
 
 
 class TGMinerConfig:
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.config_path = path
 
         def regex_type(value):

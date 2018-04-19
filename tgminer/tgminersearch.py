@@ -36,7 +36,7 @@ from tgminer.cio import enc_print
 from tgminer import exits
 
 
-def query_limit(parser):
+def query_limit(parser: argparse.ArgumentParser):
     def test(value):
         # noinspection PyBroadException
         try:
@@ -51,7 +51,7 @@ def query_limit(parser):
     return test
 
 
-def markov_state_size(parser):
+def markov_state_size(parser: argparse.ArgumentParser):
     def test(value):
         # noinspection PyBroadException
         try:

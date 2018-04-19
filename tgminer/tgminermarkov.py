@@ -7,7 +7,7 @@ from tgminer import exits
 from tgminer.cio import enc_print
 
 
-def min_output_length(parser):
+def min_output_length(parser: argparse.ArgumentParser):
     def test(value):
         # noinspection PyBroadException
         try:
@@ -22,7 +22,7 @@ def min_output_length(parser):
     return test
 
 
-def max_output_length(parser):
+def max_output_length(parser: argparse.ArgumentParser):
     def test(value):
         # noinspection PyBroadException
         try:
@@ -37,7 +37,7 @@ def max_output_length(parser):
     return test
 
 
-def max_attempts(parser):
+def max_attempts(parser: argparse.ArgumentParser):
     def test(value):
         # noinspection PyBroadException
         try:
