@@ -22,7 +22,7 @@ import sys
 import os
 
 
-def enc_print(*args, sep: str = ' ', end: str = '\n', file=None, flush=False, encoding: str = 'utf-8'):
+def enc_print(*args, sep: str = ' ', end: str = '\n', file=None, flush: bool = False, encoding: str = 'utf-8'):
     """Prints with default encoding to terminals, prints with a specific encoding to everything else.
 
     :param args: Arguments to print
