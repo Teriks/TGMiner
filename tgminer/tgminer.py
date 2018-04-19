@@ -38,7 +38,6 @@ import pyrogram.api
 import pyrogram.api.errors
 import pyrogram.api.functions
 import pyrogram.api.types
-import pyrogram.client.utils
 import pyrogram.session
 import whoosh.index
 from slugify import slugify
