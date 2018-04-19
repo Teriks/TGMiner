@@ -24,11 +24,13 @@ import errno
 import json
 import mimetypes
 import os
+import shutil
 import sys
 import threading
 import traceback
 import uuid
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 
 import fasteners
 import pyrogram
@@ -36,17 +38,15 @@ import pyrogram.api
 import pyrogram.api.errors
 import pyrogram.api.functions
 import pyrogram.api.types
+import pyrogram.client.utils
 import pyrogram.session
 import whoosh.index
 from slugify import slugify
 
+import tgminer.config
 import tgminer.fulltext
 from tgminer import exits
-import tgminer.config
-
-
 from tgminer.cio import enc_print
-
 
 # silence pyrogram message on start
 pyrogram.session.Session.notice_displayed = True
@@ -67,12 +67,11 @@ class TGMinerClient:
         if session_path_dir:
             os.makedirs(session_path_dir, exist_ok=True)
 
-        pyrogram.Client.DOWNLOAD_WORKERS = config.download_workers
         pyrogram.Client.UPDATES_WORKERS = config.updates_workers
 
-        self._client = pyrogram.Client(config.session_path, api_key=(config.api_key.id, config.api_key.hash))
+        self._client = pyrogram.Client(config.session_path, api_id=config.api_key.id, api_hash=config.api_key.hash)
 
-        self._client.set_update_handler(self._update_handler)
+        self._client.add_handler(pyrogram.RawUpdateHandler(self._update_handler))
 
         os.makedirs(config.data_dir, exist_ok=True)
 
@@ -89,6 +88,65 @@ class TGMinerClient:
         except OSError as e:
             if e.errno == errno.EEXIST:
                 self._index = whoosh.index.open_dir(self._indexdir)
+
+        self._download_worker_pool = None
+
+    def download_media(self,
+                       message,
+                       file_name="",
+                       block=False,
+                       progress=None):
+
+        if isinstance(message, pyrogram.api.types.Message):
+            media = message.media
+        else:
+            media = message
+
+        handle = self._download_worker_pool.submit(self._download_worker, media, file_name, progress)
+
+        if block:
+            handle.result()
+
+    def _download_worker(self, media, file_name, progress):
+        temp_file_path = ''
+        try:
+            if isinstance(media, pyrogram.api.types.MessageMediaDocument):
+                document = media.document
+                if isinstance(document, pyrogram.api.types.Document):
+                    temp_file_path = self._client.get_file(
+                        dc_id=document.dc_id,
+                        id=document.id,
+                        access_hash=document.access_hash,
+                        version=document.version,
+                        size=document.size,
+                        progress=progress
+                    )
+            elif isinstance(media, (pyrogram.api.types.MessageMediaPhoto, pyrogram.api.types.Photo)):
+                if isinstance(media, pyrogram.api.types.MessageMediaPhoto):
+                    photo = media.photo
+                else:
+                    photo = media
+
+                photo_loc = photo.sizes[-1].location
+
+                temp_file_path = self._client.get_file(
+                    dc_id=photo_loc.dc_id,
+                    volume_id=photo_loc.volume_id,
+                    local_id=photo_loc.local_id,
+                    secret=photo_loc.secret,
+                    size=photo.sizes[-1].size,
+                    progress=progress
+                )
+
+            if temp_file_path:
+                os.makedirs(os.path.dirname(file_name), exist_ok=True)
+                shutil.move(temp_file_path, file_name)
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            try:
+                os.remove(temp_file_path)
+            except OSError:
+                pass
 
     @staticmethod
     def _get_media_ext(message):
@@ -361,13 +419,13 @@ class TGMinerClient:
             og_doc_filename = filename_attr.file_name
 
             if self._config.download_documents and self._config.docname_filter.match(filename_attr.file_name):
-                self._client.download_media(message, file_name=doc_file_path)
+                self.download_media(message, file_name=doc_file_path)
             else:
                 doc_filter_discarded = True
 
         except StopIteration:
             if self._config.download_documents and self._config.docname_filter.match(''):
-                self._client.download_media(message, file_name=doc_file_path)
+                self.download_media(message, file_name=doc_file_path)
             else:
                 doc_filter_discarded = True
 
@@ -440,7 +498,7 @@ class TGMinerClient:
             media_file_path = os.path.abspath(
                 os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(message))
 
-            self._client.download_media(message, file_name=media_file_path)
+            self.download_media(message, file_name=media_file_path)
 
             indexed_media_info = '(Photo: {})'.format(media_file_path)
         else:
@@ -454,10 +512,12 @@ class TGMinerClient:
         return indexed_media_info, indexed_message, log_entry
 
     def start(self):
+        self._download_worker_pool = ThreadPoolExecutor(max_workers=self._config.download_workers)
         self._client.start()
 
     def stop(self):
         self._client.stop()
+        self._download_worker_pool.shutdown()
 
     def idle(self):
         self._client.idle()

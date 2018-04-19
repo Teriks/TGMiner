@@ -30,7 +30,7 @@ setup(name='tgminer',
                         "tgcrypto",
                         "jsoncomment~=0.3.0",
                         "fasteners~=0.14.1",
-                        "pyrogram~=0.6.5",
+                        "pyrogram~=0.7.1",
                         "dschema~=0.3.1.0a1",
                         'markovify~=0.7.1'],
       entry_points={
