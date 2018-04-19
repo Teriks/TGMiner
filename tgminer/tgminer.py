@@ -240,14 +240,10 @@ class TGMinerClient:
 
         message = update.message
 
-        if isinstance(message, pyrogram.api.types.Message):
-            m_parser = message_parser.parse_message
-        elif isinstance(message, pyrogram.api.types.MessageService):
-            m_parser = message_parser.parse_message_service
-        else:
+        if not isinstance(message, pyrogram.api.types.Message):
             return
 
-        parsed_message = m_parser(
+        parsed_message = message_parser.parse_message(
             self._client,
             update.message,
             users,
