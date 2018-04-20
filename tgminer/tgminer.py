@@ -32,15 +32,12 @@ from collections import OrderedDict
 
 import fasteners
 import pyrogram
-import pyrogram.api
-import pyrogram.api.errors
-import pyrogram.api.functions
-import pyrogram.api.types
 import pyrogram.session
 import whoosh.index
-from slugify import slugify
-
+from pyrogram.api import functions as api_functions
+from pyrogram.api import types as api_types
 from pyrogram.client import message_parser
+from slugify import slugify
 
 import tgminer.config
 import tgminer.fulltext
@@ -90,20 +87,16 @@ class TGMinerClient:
                 self._index = whoosh.index.open_dir(self._indexdir)
 
     @staticmethod
-    def _get_media_ext(message: pyrogram.api.types.Message):
-        """
-        :type message: pyrogram.api.types.Message
-        :return: str file extension
-        """
-        if isinstance(message, pyrogram.api.types.Message):
+    def _get_media_ext(message: api_types.Message):
+        if isinstance(message, api_types.Message):
             media = message.media
         else:
             media = message
 
-        if isinstance(media, pyrogram.api.types.MessageMediaDocument):
+        if isinstance(media, api_types.MessageMediaDocument):
             document = media.document
 
-            if isinstance(document, pyrogram.api.types.Document):
+            if isinstance(document, api_types.Document):
                 extension = '.txt' if document.mime_type == 'text/plain' else \
                     mimetypes.guess_extension(document.mime_type) if document.mime_type else '.unknown'
 
@@ -115,22 +108,19 @@ class TGMinerClient:
                         return '.none'
                 return extension
 
-        elif isinstance(media, (pyrogram.api.types.MessageMediaPhoto, pyrogram.api.types.Photo)):
-            if isinstance(media, pyrogram.api.types.MessageMediaPhoto):
+        elif isinstance(media, (api_types.MessageMediaPhoto, api_types.Photo)):
+            if isinstance(media, api_types.MessageMediaPhoto):
                 photo = media.photo
             else:
                 photo = media
 
-            if isinstance(photo, pyrogram.api.types.Photo):
+            if isinstance(photo, api_types.Photo):
                 return '.jpg'
 
         return '.none'
 
     @staticmethod
-    def _get_user_alias(user: pyrogram.api.types.User):
-        """
-       :type user: pyrogram.api.types.User
-       """
+    def _get_user_alias(user: api_types.User):
         if user.first_name is not None:
             if user.last_name is not None:
                 return '{} {}'.format(
@@ -140,10 +130,8 @@ class TGMinerClient:
         return None
 
     @staticmethod
-    def _get_log_username(user: pyrogram.api.types.User):
-        """
-        :type user: pyrogram.api.types.User
-        """
+    def _get_log_username(user: api_types.User):
+
         user_id_part = '[@{}]'.format(user.username) if user.username else ''
 
         if user.first_name is not None:
@@ -162,21 +150,12 @@ class TGMinerClient:
             return 'None'
 
     def _index_log_message(self,
-                           from_user: pyrogram.api.types.User,
-                           to_user: pyrogram.api.types.User,
+                           from_user: api_types.User,
+                           to_user: api_types.User,
                            to_id: int,
                            media_info: str,
                            message_text: str,
                            chat_slug: str):
-        """
-        :type from_user: pyrogram.api.types.User
-        :type to_user: pyrogram.api.types.User
-        :type to_id: int
-        :type media_info: str
-        :type message_text: str
-        :type chat_slug: str
-
-        """
 
         # lock in process and multiprocess lock
         with self._index_lock, fasteners.InterProcessLock(self._index_lock_path):
@@ -242,28 +221,21 @@ class TGMinerClient:
 
     def _update_handler(self, client, update, users: dict, chats: dict):
 
-        if not isinstance(update, (pyrogram.api.types.UpdateNewChannelMessage, pyrogram.api.types.UpdateNewMessage)):
+        if not isinstance(update, (api_types.UpdateNewChannelMessage, api_types.UpdateNewMessage)):
             return
 
         update_message = update.message
 
-        if not isinstance(update_message, pyrogram.api.types.Message):
+        if not isinstance(update_message, api_types.Message):
             return
 
-        parsed_message = message_parser.parse_message(
-            self._client,
-            update.message,
-            users,
-            chats
-        )
-
-        is_peer_user = isinstance(update_message.to_id, pyrogram.api.types.PeerUser)
+        is_peer_user = isinstance(update_message.to_id, api_types.PeerUser)
 
         if is_peer_user and not self._config.log_direct_chats:
             return
 
-        is_peer_channel = isinstance(update_message.to_id, pyrogram.api.types.PeerChannel)
-        is_peer_chat = isinstance(update_message.to_id, pyrogram.api.types.PeerChat)
+        is_peer_channel = isinstance(update_message.to_id, api_types.PeerChannel)
+        is_peer_chat = isinstance(update_message.to_id, api_types.PeerChat)
 
         if (is_peer_channel or is_peer_chat) and not self._config.log_group_chats:
             return
@@ -323,7 +295,14 @@ class TGMinerClient:
 
         indexed_media_info = None
 
-        if isinstance(update_message.media, pyrogram.api.types.MessageMediaPhoto):
+        if isinstance(update_message.media, api_types.MessageMediaPhoto):
+
+            parsed_message: pyrogram.Message = message_parser.parse_message(
+                self._client,
+                update.message,
+                users,
+                chats
+            )
 
             indexed_media_info, indexed_message, short_log_entry = self._handle_photo_message(
                 log_folder,
@@ -331,7 +310,14 @@ class TGMinerClient:
                 update_message,
                 parsed_message)
 
-        elif isinstance(update_message.media, pyrogram.api.types.MessageMediaDocument):
+        elif isinstance(update_message.media, api_types.MessageMediaDocument):
+
+            parsed_message: pyrogram.Message = message_parser.parse_message(
+                self._client,
+                update.message,
+                users,
+                chats
+            )
 
             indexed_media_info, indexed_message, short_log_entry = self._handle_media_message(
                 log_folder,
@@ -364,7 +350,7 @@ class TGMinerClient:
     def _handle_media_message(self,
                               log_folder: str,
                               log_user_name: str,
-                              update_message: pyrogram.api.types.Message,
+                              update_message: api_types.Message,
                               parsed_message: pyrogram.Message):
 
         doc_file_path = os.path.abspath(
@@ -372,36 +358,24 @@ class TGMinerClient:
 
         indexed_message = update_message.message
 
-        doc_filter_discarded = False
-        og_doc_filename = None
+        filename_attr = next(
+            (x for x in update_message.media.document.attributes
+             if isinstance(x, api_types.DocumentAttributeFilename)), None)
 
-        try:
-            filename_attr = (x for x in update_message.media.document.attributes
-                             if isinstance(x, pyrogram.api.types.DocumentAttributeFilename)).__next__()
-
-            og_doc_filename = filename_attr.file_name
-
-            if self._config.download_documents and self._config.docname_filter.match(filename_attr.file_name):
-                self._client.download_media(parsed_message, file_name=doc_file_path, block=False)
-            else:
-                doc_filter_discarded = True
-
-        except StopIteration:
-            if self._config.download_documents and self._config.docname_filter.match(''):
-                self._client.download_media(parsed_message, file_name=doc_file_path, block=False)
-            else:
-                doc_filter_discarded = True
+        og_file_name = filename_attr.file_name if filename_attr else ''
 
         displayed_path = doc_file_path
 
-        if not self._config.download_documents:
+        if self._config.download_documents and (not og_file_name or self._config.docname_filter.match(og_file_name)):
+            self._client.download_media(parsed_message, file_name=doc_file_path, block=False)
+        elif not self._config.download_documents:
             displayed_path = "DOCUMENT DOWNLOADS DISABLED"
-        elif doc_filter_discarded:
+        else:
             displayed_path = "DOCNAME_FILTER DISCARDED FILE"
 
         indexed_media_info = '(Document: "{}"{}: {})'.format(
             update_message.media.document.mime_type,
-            ' - "{}"'.format(og_doc_filename) if og_doc_filename else '',
+            ' - "{}"'.format(og_file_name),
             displayed_path)
 
         log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
@@ -410,7 +384,7 @@ class TGMinerClient:
         return indexed_media_info, indexed_message, log_entry
 
     def get_chats_info(self) -> list:
-        r = self._client.send(pyrogram.api.functions.messages.GetAllChats([]))
+        r = self._client.send(api_functions.messages.GetAllChats([]))
 
         data = []
 
@@ -432,7 +406,7 @@ class TGMinerClient:
         enc_print(json.dumps(self.get_chats_info(), indent=4, sort_keys=False), file=file)
 
     def get_peers_info(self) -> list:
-        r = self._client.send(pyrogram.api.functions.users.GetUsers([*self._client.peers_by_id.values()]))
+        r = self._client.send(api_functions.users.GetUsers([*self._client.peers_by_id.values()]))
 
         data = []
 
@@ -458,7 +432,7 @@ class TGMinerClient:
     def _handle_photo_message(self,
                               log_folder: str,
                               log_user_name: str,
-                              update_message: pyrogram.api.types.Message,
+                              update_message: api_types.Message,
                               parsed_message: pyrogram.Message):
 
         if self._config.download_photos:
