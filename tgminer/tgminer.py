@@ -66,7 +66,9 @@ class TGMinerClient:
         pyrogram.Client.UPDATES_WORKERS = config.updates_workers
         pyrogram.Client.DOWNLOAD_WORKERS = config.download_workers
 
-        self._client = pyrogram.Client(config.session_path, api_id=config.api_key.id, api_hash=config.api_key.hash)
+        self._client = pyrogram.Client(config.session_path,
+                                       api_id=config.api_key.id,
+                                       api_hash=config.api_key.hash)
 
         self._client.add_handler(pyrogram.RawUpdateHandler(self._update_handler))
 
@@ -97,15 +99,13 @@ class TGMinerClient:
             document = media.document
 
             if isinstance(document, api_types.Document):
-                extension = '.txt' if document.mime_type == 'text/plain' else \
-                    mimetypes.guess_extension(document.mime_type) if document.mime_type else '.unknown'
+                extension = ('.txt' if document.mime_type == 'text/plain' else
+                             mimetypes.guess_extension(document.mime_type)
+                             if document.mime_type else '.unknown')
 
                 if extension is None:
-                    if document.mime_type == 'image/webp':
-                        # mimetypes.guess_extension does not figure out webp for some reason
-                        return '.webp'
-                    else:
-                        return '.none'
+                    # mimetypes.guess_extension does not figure out webp for some reason
+                    return '.webp' if document.mime_type == 'image/webp' else '.none'
                 return extension
 
         elif isinstance(media, (api_types.MessageMediaPhoto, api_types.Photo)):
@@ -121,30 +121,25 @@ class TGMinerClient:
 
     @staticmethod
     def _get_user_alias(user: api_types.User):
-        if user.first_name is not None:
-            if user.last_name is not None:
-                return '{} {}'.format(
-                    user.first_name, user.last_name)
-            else:
-                return user.first_name
+        if user.first_name:
+            return f'{user.first_name} {user.last_name}'.rstrip() if user.last_name else user.first_name
         return None
 
     @staticmethod
     def _get_log_username(user: api_types.User):
 
-        user_id_part = '[@{}]'.format(user.username) if user.username else ''
+        user_id_part = f'[@{user.username}]' if user.username else ''
 
-        if user.first_name is not None:
-            if user.last_name is not None:
-                return '{} {} {}'.format(
-                    user.first_name, user.last_name, user_id_part).rstrip()
+        if user.first_name:
+            if user.last_name:
+                return f'{user.first_name} {user.last_name} {user_id_part}'.rstrip()
             else:
-                return '{} {}'.format(user.first_name, user_id_part).rstrip()
+                return f'{user.first_name} {user_id_part}'.rstrip()
 
-        if user.last_name is not None:
-            return '{} {}'.format(user.last_name, user_id_part).rstrip()
+        if user.last_name:
+            return f'{user.last_name} {user_id_part}'.rstrip()
 
-        if user.username is not None:
+        if user.username:
             return user_id_part
         else:
             return 'None'
@@ -167,7 +162,6 @@ class TGMinerClient:
 
             if to_user:
                 to_username = to_user.username
-
                 to_alias = self._get_user_alias(to_user)
             else:
                 to_username = None
@@ -183,7 +177,12 @@ class TGMinerClient:
     def _timestamp(self):
         return self._config.timestamp_format.format(datetime.datetime.now())
 
-    def _filter_group_chat_check(self, title: str, chat_slug: str, chat_id: int, username: str, user_alias: str,
+    def _filter_group_chat_check(self,
+                                 title: str,
+                                 chat_slug: str,
+                                 chat_id: int,
+                                 username: str,
+                                 user_alias: str,
                                  user_id: int) -> bool:
 
         filter_title = self._config.group_filters.title
@@ -201,7 +200,11 @@ class TGMinerClient:
                     filter_user_alias.match(user_alias) and
                     filter_user_id.match(str(user_id)))
 
-    def _filter_direct_chat_check(self, username: str, alias: str, from_id: int) -> bool:
+    def _filter_direct_chat_check(self,
+                                  username: str,
+                                  alias: str,
+                                  from_id: int) -> bool:
+
         filter_username = self._config.direct_chat_filters.username
         filter_alias = self._config.direct_chat_filters.alias
         filter_id = self._config.direct_chat_filters.id
@@ -210,7 +213,11 @@ class TGMinerClient:
                     filter_alias.match(alias) and
                     filter_id.match(str(from_id)))
 
-    def _filter_users_check(self, username: str, alias: str, from_id: int) -> bool:
+    def _filter_users_check(self,
+                            username: str,
+                            alias: str,
+                            from_id: int) -> bool:
+
         filter_username = self._config.user_filters.username
         filter_alias = self._config.user_filters.alias
         filter_id = self._config.user_filters.id
@@ -224,7 +231,7 @@ class TGMinerClient:
         if not isinstance(update, (api_types.UpdateNewChannelMessage, api_types.UpdateNewMessage)):
             return
 
-        update_message = update.message
+        update_message: api_types.Message = update.message
 
         if not isinstance(update_message, api_types.Message):
             return
@@ -240,7 +247,7 @@ class TGMinerClient:
         if (is_peer_channel or is_peer_chat) and not self._config.log_group_chats:
             return
 
-        user = users[update_message.from_id]
+        user: api_types.User = users[update_message.from_id]
 
         user_name = user.username if user.username else ''
 
@@ -327,7 +334,7 @@ class TGMinerClient:
 
         else:
             indexed_message = update_message.message
-            short_log_entry = '{}: {}'.format(log_user_name, update_message.message)
+            short_log_entry = f'{log_user_name}: {indexed_message}'
 
         self._index_log_message(from_user=user,
                                 to_user=to_user,
@@ -337,8 +344,9 @@ class TGMinerClient:
                                 chat_slug=chat_slug)
 
         log_entry = '{} chat="{}" to_id="{}"{} | {}'.format(
-            self._timestamp(), chat_slug, to_id, ' to {}'.format(
-                self._get_log_username(to_user)) if to_user else '', short_log_entry)
+            self._timestamp(), chat_slug, to_id,
+            f' to {self._get_log_username(to_user)}' if to_user else '',
+            short_log_entry)
 
         if self._config.chat_stdout:
             enc_print(log_entry)
@@ -356,7 +364,7 @@ class TGMinerClient:
         doc_file_path = os.path.abspath(
             os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
 
-        indexed_message = update_message.message
+        indexed_message: str = update_message.message
 
         filename_attr = next(
             (x for x in update_message.media.document.attributes
@@ -375,11 +383,11 @@ class TGMinerClient:
 
         indexed_media_info = '(Document: "{}"{}: {})'.format(
             update_message.media.document.mime_type,
-            ' - "{}"'.format(og_file_name),
+            f' - "{og_file_name}"',
             displayed_path)
 
-        log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
-                                      .format(update_message.message) if update_message.message else '')
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
 
         return indexed_media_info, indexed_message, log_entry
 
@@ -442,14 +450,14 @@ class TGMinerClient:
 
             self._client.download_media(parsed_message, file_name=media_file_path, block=False)
 
-            indexed_media_info = '(Photo: {})'.format(media_file_path)
+            indexed_media_info = f'(Photo: {media_file_path})'
         else:
             indexed_media_info = '(Photo: PHOTO DOWNLOADS DISABLED)'
 
         indexed_message = update_message.message
 
-        log_entry = '{}: {}{}'.format(log_user_name, indexed_media_info, ' Caption: {}'
-                                      .format(update_message.message) if update_message.message else '')
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {update_message.message}' if update_message.message else ''))
 
         return indexed_media_info, indexed_message, log_entry
 
@@ -488,7 +496,7 @@ def main():
     config_path = tgminer.config.get_config_path(args.config)
 
     if not os.path.isfile(config_path):
-        enc_print('Config file "{}" does not exist.'.format(config_path), file=sys.stderr)
+        enc_print(f'Config file "{config_path}" does not exist.', file=sys.stderr)
         exit(exits.EX_NOINPUT)
 
     try:

@@ -36,8 +36,8 @@ setup(name='tgminer',
       entry_points={
           'console_scripts': [
               'tgminer = tgminer.tgminer:main',
-              'tgminer-search = tgminer.tgminersearch:main',
-              'tgminer-markov = tgminer.tgminermarkov:main'
+              'tgminer-search = tgminer.search:main',
+              'tgminer-markov = tgminer.markov:main'
           ]
       },
       classifiers=[

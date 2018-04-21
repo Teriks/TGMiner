@@ -110,7 +110,7 @@ def main():
             enc_print(str(e), file=sys.stderr)
             exit(exits.EX_CONFIG)
     else:
-        enc_print('Cannot find tgminer config file: "{}"'.format(config_path))
+        enc_print(f'Cannot find tgminer config file: "{config_path}"')
         exit(exits.EX_NOINPUT)
 
     index = whoosh.index.open_dir(os.path.join(config.data_dir, 'indexdir'))
@@ -146,7 +146,7 @@ def main():
                 to_alias = hit.get('to_alias', None)
                 to_id = hit.get('to_id')
 
-                username_part = ' [@{}]'.format(username) if username else ''
+                username_part = f' [@{username}]' if username else ''
 
                 timestamp = config.timestamp_format.format(hit['timestamp'])
 
@@ -154,27 +154,18 @@ def main():
 
                 media = hit.get('media', None)
 
-                to_username_part = ' [@{}]'.format(to_username) if to_username else ''
+                to_username_part = f' [@{to_username}]' if to_username else ''
 
-                if to_alias or to_username_part:
-                    to_user_part = ' to {}{}'.format(to_alias, to_username_part)
-                else:
-                    to_user_part = ''
+                to_user_part = f' to {to_alias}{to_username_part}' if to_alias or to_username_part else ''
 
                 if media:
-                    caption_part = ' Caption: {}'.format(message) if message else ''
+                    caption_part = f' Caption: {message}' if message else ''
 
-                    enc_print('{} chat="{}" to_id="{}"{} | {}{}: {}{}'
-                              .format(timestamp, chat_slug, to_id, to_user_part,
-                                      alias,
-                                      username_part, media,
-                                      caption_part))
+                    enc_print(
+                        f'{timestamp} chat="{chat_slug}" to_id="{to_id}"{to_user_part} | {alias}{username_part}: {media}{caption_part}')
                 else:
-                    enc_print('{} chat="{}" to_id="{}"{} | {}{}: {}'
-                              .format(timestamp, chat_slug, to_id, to_user_part,
-                                      alias,
-                                      username_part,
-                                      hit['message']))
+                    enc_print(
+                        f'{timestamp} chat="{chat_slug}" to_id="{to_id}"{to_user_part} | {alias}{username_part}: {hit["message"]}')
 
     if args.markov:
         split_by_spaces = re.compile('\s')
@@ -194,8 +185,8 @@ def main():
             with open(args.markov, 'w', encoding='utf-8') as m_out:
                 m_out.write(text.to_json())
         except OSError as e:
-            enc_print('Could not write markov chain to file "{}", error: {}'
-                      .format(args.markov, e), file=sys.stderr)
+            enc_print(f'Could not write markov chain to file "{args.markov}", error: {e}',
+                      file=sys.stderr)
             exit(exits.EX_CANTCREAT)
 
 
