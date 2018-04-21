@@ -465,8 +465,7 @@ class TGMinerClient:
         self._client.start()
 
     def stop(self):
-        if self._client.is_started:
-            self._client.stop()
+        self._client.stop()
 
     def idle(self):
         self._client.idle()
