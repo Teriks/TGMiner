@@ -147,7 +147,7 @@ def main():
                                            sortedby='timestamp')
 
     if args.markov:
-        split_by_spaces = re.compile('\s')
+        split_by_spaces = re.compile('\s+')
 
         chain = kovit.Chain()
 
