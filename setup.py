@@ -32,7 +32,7 @@ setup(name='tgminer',
                         "fasteners~=0.14.1",
                         "pyrogram~=0.7.1",
                         "dschema~=0.3.1a1",
-                        'kovit~=0.1.16a1'],
+                        'kovit~=0.1.17a1'],
       entry_points={
           'console_scripts': [
               'tgminer = tgminer.tgminer:main',

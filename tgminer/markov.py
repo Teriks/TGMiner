@@ -1,4 +1,5 @@
 import argparse
+import random
 
 import kovit
 
@@ -75,7 +76,9 @@ def main():
     attempts = 0
 
     while True:
-        message = ' '.join(m_chain.walk(args.max_words, repeat=args.repeat))
+
+        message = ' '.join(m_chain.walk(args.max_words, repeat=args.repeat,
+                                        start_chooser=lambda: m_chain.random_start(dead_end_ok=False)))
 
         if message:
             break
