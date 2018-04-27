@@ -1,37 +1,21 @@
 import argparse
-import json
 
-import markovify
+import kovit
 
 from tgminer import exits
 from tgminer.cio import enc_print
 
 
-def min_output_length(parser: argparse.ArgumentParser):
+def max_output_words(parser: argparse.ArgumentParser):
     def test(value):
         # noinspection PyBroadException
         try:
             value = int(value)
         except Exception:
-            parser.error('Minimum output length must be an integer.')
+            parser.error('Maximum output words must be an integer.')
 
         if value < 1:
-            parser.error('Minimum output length cannot be less than 1.')
-        return value
-
-    return test
-
-
-def max_output_length(parser: argparse.ArgumentParser):
-    def test(value):
-        # noinspection PyBroadException
-        try:
-            value = int(value)
-        except Exception:
-            parser.error('Maximum output length must be an integer.')
-
-        if value < 1:
-            parser.error('Maximum output length cannot be less than 1.')
+            parser.error('Maximum output words cannot be less than 1.')
         return value
 
     return test
@@ -68,19 +52,21 @@ def main():
     min_max_group = arg_parser.add_argument_group(
         description='The following are optional, but must be specified together.')
 
-    min_max_group.add_argument('--min-length', help='Min output length in characters.',
-                               type=min_output_length(arg_parser))
-    min_max_group.add_argument('--max-length', help='Max output length in characters.',
-                               type=max_output_length(arg_parser))
+    min_max_group.add_argument('--max-words', help='Max output length in words, default is 256.',
+                               type=max_output_words(arg_parser), default=256)
+
+    min_max_group.add_argument('--repeat', help='Keep generating words up until max word length.',
+                               action='store_true', default=False)
 
     args = arg_parser.parse_args()
 
-    if len([x for x in (args.min_length, args.max_length) if x is not None]) == 1:
-        arg_parser.error('--min-length and --max-length must be given together')
+    m_chain = kovit.Chain()
+
 
     try:
-        with open(args.chain, 'r', encoding='utf-8') as chain:
-            m_text = markovify.Text.from_dict(json.load(chain))
+
+        with open(args.chain, 'rb') as chain:
+            m_chain.load_json(chain)
     except Exception as e:
         enc_print('Error reading markov chain file "{}", message: {}'.format(args.chain, e))
         exit(exits.EX_NOINPUT)
@@ -89,10 +75,7 @@ def main():
     attempts = 0
 
     while True:
-        if args.min_length is not None:
-            message = m_text.make_short_sentence(args.max_length, args.min_length, tries=1)
-        else:
-            message = m_text.make_sentence(tries=1)
+        message = ' '.join(m_chain.walk(args.max_words, repeat=args.repeat))
 
         if message:
             break

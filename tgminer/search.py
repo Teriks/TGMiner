@@ -24,7 +24,8 @@ import re
 
 import fasteners
 
-import markovify
+import kovit
+import kovit.iters
 
 import whoosh.index
 from whoosh.qparser import QueryParser, sys
@@ -91,13 +92,28 @@ def main():
                                  'Must be used in conjunction with --markov.',
                             type=markov_state_size(arg_parser))
 
+    arg_parser.add_argument('--markov-optimize', default=None, choices=('accuracy', 'size'),
+                            help='The default option "accuracy" produces a larger chain file where '
+                                 'all trailing word/sequence probabilities are considered for every word in '
+                                 'a message. This can result in a very large and slow to load chain if the '
+                                 'state size is set to a high value. Setting this to "size" will cause '
+                                 'trailing probabilities for the words inside the sequence that makes up a state '
+                                 'to be discarded, except for the last word. This will make the chain smaller '
+                                 'but results in more of an approximate model of the input messages.')
+
     args = arg_parser.parse_args()
 
     if args.markov_state_size is not None and args.markov is None:
         arg_parser.error('Must be using the --markov option to use --markov-state-size.')
 
+    if args.markov_optimize is not None and args.markov is None:
+        arg_parser.error('Must be using the --markov option to use --markov-optimize.')
+
     if args.markov_state_size is None:
         args.markov_state_size = 2
+
+    if args.markov_optimize is None:
+        args.markov_optimize = 'accuracy'
 
     config = None  # hush intellij highlighted undeclared variable use warning
 
@@ -123,71 +139,74 @@ def main():
 
     query = query_parser.parse(args.query)
 
-    markov_input = []
-
-    with fasteners.InterProcessLock(index_lock_path):
-        with index.searcher() as searcher:
-
-            search = searcher.search(query,
-                                     limit=None if args.limit < 1 else args.limit,
-                                     sortedby='timestamp')
-            for hit in search:
-
-                message = hit.get('message', None)
-                if args.markov:
-                    if message:
-                        markov_input = markov_input + markovify.split_into_sentences(message)
-                    continue
-
-                username = hit.get('username', None)
-                alias = hit.get('alias', 'NO_ALIAS')
-
-                to_username = hit.get('to_username', None)
-                to_alias = hit.get('to_alias', None)
-                to_id = hit.get('to_id')
-
-                username_part = f' [@{username}]' if username else ''
-
-                timestamp = config.timestamp_format.format(hit['timestamp'])
-
-                chat_slug = hit['chat']
-
-                media = hit.get('media', None)
-
-                to_username_part = f' [@{to_username}]' if to_username else ''
-
-                to_user_part = f' to {to_alias}{to_username_part}' if to_alias or to_username_part else ''
-
-                if media:
-                    caption_part = f' Caption: {message}' if message else ''
-
-                    enc_print(
-                        f'{timestamp} chat="{chat_slug}" to_id="{to_id}"{to_user_part} | {alias}{username_part}: {media}{caption_part}')
-                else:
-                    enc_print(
-                        f'{timestamp} chat="{chat_slug}" to_id="{to_id}"{to_user_part} | {alias}{username_part}: {hit["message"]}')
+    def result_iter():
+        with fasteners.InterProcessLock(index_lock_path):
+            with index.searcher() as searcher:
+                yield from searcher.search(query,
+                                           limit=None if args.limit < 1 else args.limit,
+                                           sortedby='timestamp')
 
     if args.markov:
         split_by_spaces = re.compile('\s')
 
-        if len(markov_input) == 0:
+        chain = kovit.Chain()
+
+        if args.markov_optimize == 'accuracy':
+            word_iter = kovit.iters.iter_window
+        else:
+            word_iter = kovit.iters.iter_runs
+
+        anything = False
+        for hit in result_iter():
+            message = hit.get('message', None)
+            if message:
+                anything = True
+                for start, next_items in word_iter(split_by_spaces.split(message), args.markov_state_size):
+                    chain.add_to_bag(start, next_items)
+
+        if not anything:
             enc_print('Query returned no messages!', file=sys.stderr)
             exit(exits.EX_SOFTWARE)
 
-        for idx, v in enumerate(markov_input):
-            markov_input[idx] = split_by_spaces.split(v)
-
-        text = markovify.Text(input_text=None,
-                              parsed_sentences=markov_input,
-                              state_size=args.markov_state_size)
-
         try:
             with open(args.markov, 'w', encoding='utf-8') as m_out:
-                m_out.write(text.to_json())
+                chain.dump_json(m_out)
         except OSError as e:
             enc_print(f'Could not write markov chain to file "{args.markov}", error: {e}',
                       file=sys.stderr)
             exit(exits.EX_CANTCREAT)
+    else:
+        for hit in result_iter():
+
+            message = hit.get('message', None)
+
+            username = hit.get('username', None)
+            alias = hit.get('alias', 'NO_ALIAS')
+
+            to_username = hit.get('to_username', None)
+            to_alias = hit.get('to_alias', None)
+            to_id = hit.get('to_id')
+
+            username_part = f' [@{username}]' if username else ''
+
+            timestamp = config.timestamp_format.format(hit['timestamp'])
+
+            chat_slug = hit['chat']
+
+            media = hit.get('media', None)
+
+            to_username_part = f' [@{to_username}]' if to_username else ''
+
+            to_user_part = f' to {to_alias}{to_username_part}' if to_alias or to_username_part else ''
+
+            if media:
+                caption_part = f' Caption: {message}' if message else ''
+
+                enc_print(
+                    f'{timestamp} chat="{chat_slug}" to_id="{to_id}"{to_user_part} | {alias}{username_part}: {media}{caption_part}')
+            else:
+                enc_print(
+                    f'{timestamp} chat="{chat_slug}" to_id="{to_id}"{to_user_part} | {alias}{username_part}: {hit["message"]}')
 
 
 if __name__ == '__main__':

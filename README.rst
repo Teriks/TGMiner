@@ -253,9 +253,9 @@ Current Help Output
 
 .. code-block::
 
-    usage: tgminer-search [-h] [--config CONFIG] [--limit LIMIT]
-                          [--markov OUT_FILE]
+    usage: tgminer-search [-h] [--config CONFIG] [--limit LIMIT] [--markov OUT_FILE]
                           [--markov-state-size MARKOV_STATE_SIZE]
+                          [--markov-optimize {accuracy,size}]
                           query
 
     Perform a full-text search over stored telegram messages.
@@ -276,6 +276,17 @@ Current Help Output
                             The number of words to use in the markov model's
                             state, default is 2. Must be used in conjunction with
                             --markov.
+      --markov-optimize {accuracy,size}
+                            The default option "accuracy" produces a larger chain
+                            file where all trailing word/sequence probabilities
+                            are considered for every word in a message. This can
+                            result in a very large and slow to load chain if the
+                            state size is set to a high value. Setting this to
+                            "size" will cause trailing probabilities for the words
+                            inside the sequence that makes up a state to be
+                            discarded, except for the last word. This will make
+                            the chain smaller but results in more of an
+                            approximate model of the input messages.
 
 tgminer-markov
 ==============
@@ -297,11 +308,13 @@ using a combination of the packaged ``tgminer-search`` and ``tgminer-markov`` co
 
     tgminer-markov chainfile.json
 
-    # Try to generate a random message between X and Y characters long
-    # These parameters are optional, but must always be specified together
+    # Try to generate a random message with a max length of 500 words
 
-    tgminer-markov chainfile.json --min-length 100 --max-length 500
+    tgminer-markov chainfile.json --max-words 500
 
+    # Keep generating text until 500 words have been generated
+
+    tgminer-markov chainfile.json --max-words 500 --repeat
 
     # Generate a chain with an alternate word state size
 
@@ -325,8 +338,8 @@ Current Help Output
 
 .. code-block::
 
-    usage: tgminer-markov [-h] [--max-attempts MAX_ATTEMPTS]
-                          [--min-length MIN_LENGTH] [--max-length MAX_LENGTH]
+    usage: tgminer-markov [-h] [--max-attempts MAX_ATTEMPTS] [--max-words MAX_WORDS]
+                          [--repeat]
                           chain
 
     Read a markov chain file produced by tgminer-search --markov and generate a
@@ -346,20 +359,20 @@ Current Help Output
 
       The following are optional, but must be specified together.
 
-      --min-length MIN_LENGTH
-                            Min output length in characters.
-      --max-length MAX_LENGTH
-                            Max output length in characters.
+      --max-words MAX_WORDS
+                            Max output length in words, default is 256.
+      --repeat              Keep generating words up until max word length.
+
 
 Install
 =======
 
 Clone or download repository.
 
-``sudo python setup.py install --upgrade``
+``sudo python setup.py install``
 
 Or:
 
-``sudo pip install git+https://github.com/Teriks/TGMiner --upgrade``
+``sudo pip install https://github.com/Teriks/TGMiner/archive/master.zip --upgrade``
 
 Alternatively on Windows, run the command in an admin level command prompt without 'sudo'.
