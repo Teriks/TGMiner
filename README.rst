@@ -140,12 +140,14 @@ Current Help Output
 
 .. code-block::
 
-    usage: tgminer [-h] [--config CONFIG] [--show-chats] [--show-peers]
+    usage: tgminer [-h] [--version] [--config CONFIG] [--show-chats]
+                   [--show-peers]
 
     Passive telegram mining client.
 
     optional arguments:
       -h, --help       show this help message and exit
+      --version        show program's version number and exit
       --config CONFIG  Path to TGMiner config file, defaults to "CWD/config.json".
                        This will override the environmental variable
                        TGMINER_CONFIG if it was defined.
@@ -253,7 +255,8 @@ Current Help Output
 
 .. code-block::
 
-    usage: tgminer-search [-h] [--config CONFIG] [--limit LIMIT] [--markov OUT_FILE]
+    usage: tgminer-search [-h] [--version] [--config CONFIG] [--limit LIMIT]
+                          [--markov OUT_FILE]
                           [--markov-state-size MARKOV_STATE_SIZE]
                           [--markov-optimize {accuracy,size}]
                           query
@@ -265,6 +268,7 @@ Current Help Output
 
     optional arguments:
       -h, --help            show this help message and exit
+      --version             show program's version number and exit
       --config CONFIG       Path to TGMiner config file, defaults to
                             "CWD/config.json". This will override the
                             environmental variable TGMINER_CONFIG if it was
@@ -338,8 +342,8 @@ Current Help Output
 
 .. code-block::
 
-    usage: tgminer-markov [-h] [--max-attempts MAX_ATTEMPTS] [--max-words MAX_WORDS]
-                          [--repeat]
+    usage: tgminer-markov [-h] [--version] [--max-attempts MAX_ATTEMPTS]
+                          [--max-words MAX_WORDS] [--repeat]
                           chain
 
     Read a markov chain file produced by tgminer-search --markov and generate a
@@ -351,14 +355,12 @@ Current Help Output
 
     optional arguments:
       -h, --help            show this help message and exit
+      --version             show program's version number and exit
       --max-attempts MAX_ATTEMPTS
                             Maximum number of attempts to take at generating a
                             message before returning an empty string. The default
                             is 10, passing 0 means infinite but there is a chance
                             of looping forever if you do that.
-
-      The following are optional, but must be specified together.
-
       --max-words MAX_WORDS
                             Max output length in words, default is 256.
       --repeat              Keep generating words up until max word length.

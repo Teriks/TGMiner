@@ -23,18 +23,15 @@ import os.path
 import re
 
 import fasteners
-
 import kovit
 import kovit.iters
-
 import whoosh.index
 from whoosh.qparser import QueryParser, sys
 
-import tgminer.fulltext
 import tgminer.config
-from tgminer.cio import enc_print
-
+import tgminer.fulltext
 from tgminer import exits
+from tgminer.cio import enc_print
 
 
 def query_limit(parser: argparse.ArgumentParser):
@@ -69,8 +66,11 @@ def markov_state_size(parser: argparse.ArgumentParser):
 
 def main():
     arg_parser = argparse.ArgumentParser(
-        description='Perform a full-text search over stored telegram messages.'
+        description='Perform a full-text search over stored telegram messages.',
+        prog='tgminer-search'
     )
+
+    arg_parser.add_argument('--version', action='version', version='%(prog)s ' + tgminer.__version__)
 
     arg_parser.add_argument('query', help='Query text.')
 

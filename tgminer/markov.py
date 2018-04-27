@@ -2,6 +2,7 @@ import argparse
 
 import kovit
 
+import tgminer
 from tgminer import exits
 from tgminer.cio import enc_print
 
@@ -39,7 +40,10 @@ def max_attempts(parser: argparse.ArgumentParser):
 def main():
     arg_parser = argparse.ArgumentParser(
         description='Read a markov chain file produced by tgminer-search --markov '
-                    'and generate a random message using the pre-processed chat data.')
+                    'and generate a random message using the pre-processed chat data.',
+        prog='tgminer-markov')
+
+    arg_parser.add_argument('--version', action='version', version='%(prog)s ' + tgminer.__version__)
 
     arg_parser.add_argument('chain', help='JSON markov chain file, produced with: tgminer-search --markov.')
 
@@ -49,19 +53,15 @@ def main():
                                  'means infinite but there is a chance of looping '
                                  'forever if you do that.')
 
-    min_max_group = arg_parser.add_argument_group(
-        description='The following are optional, but must be specified together.')
+    arg_parser.add_argument('--max-words', help='Max output length in words, default is 256.',
+                            type=max_output_words(arg_parser), default=256)
 
-    min_max_group.add_argument('--max-words', help='Max output length in words, default is 256.',
-                               type=max_output_words(arg_parser), default=256)
-
-    min_max_group.add_argument('--repeat', help='Keep generating words up until max word length.',
-                               action='store_true', default=False)
+    arg_parser.add_argument('--repeat', help='Keep generating words up until max word length.',
+                            action='store_true', default=False)
 
     args = arg_parser.parse_args()
 
     m_chain = kovit.Chain()
-
 
     try:
 

@@ -472,7 +472,9 @@ class TGMinerClient:
 
 
 def main():
-    arg_parser = argparse.ArgumentParser(description='Passive telegram mining client.')
+    arg_parser = argparse.ArgumentParser(description='Passive telegram mining client.', prog='tgminer')
+
+    arg_parser.add_argument('--version', action='version', version='%(prog)s ' + tgminer.__version__)
 
     arg_parser.add_argument('--config',
                             help='Path to TGMiner config file, defaults to "CWD/config.json". '

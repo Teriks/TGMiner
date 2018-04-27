@@ -19,12 +19,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import os
 import re
 
 import dschema
 import jsoncomment
-
-import os
 
 CONFIG_ENV_VAR = 'TGMINER_CONFIG'
 """Environmental var for specifying config location."""
