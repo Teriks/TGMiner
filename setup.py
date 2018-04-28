@@ -1,17 +1,18 @@
 #! /usr/bin/env python3
 
+import io
 from setuptools import setup, find_packages
 import re
 
 version = ''
-with open('tgminer/__init__.py') as f:
+with io.open('tgminer/__init__.py') as f:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
 
 if not version:
     raise RuntimeError('version is not set')
 
 readme = ''
-with open('README.rst', 'r', encoding='utf-8') as f:
+with io.open('README.rst', 'r', encoding='utf-8') as f:
     readme = f.read()
 
 setup(name='tgminer',
@@ -28,11 +29,11 @@ setup(name='tgminer',
       install_requires=["python-slugify",
                         "whoosh~=2.7",
                         "tgcrypto~=1.0",
-                        "jsoncomment~=0.3.0",
-                        "fasteners~=0.14.1",
-                        "pyrogram~=0.7.1",
-                        "dschema~=0.3.1a1",
-                        'kovit~=0.1.17a1'],
+                        "jsoncomment~=0.3",
+                        "fasteners~=0.14",
+                        "pyrogram~=0.7",
+                        "dschema~=0.3a1",
+                        'kovit~=0.1a1'],
       entry_points={
           'console_scripts': [
               'tgminer = tgminer.tgminer:main',
