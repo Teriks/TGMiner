@@ -31,9 +31,10 @@ setup(name='tgminer',
                         "tgcrypto~=1.0",
                         "jsoncomment~=0.3",
                         "fasteners~=0.14",
-                        "pyrogram~=0.7",
                         "dschema~=0.3a1",
-                        'kovit~=0.1a1'],
+                        'kovit~=0.1a1',
+                        'pyrogram==1000.0'],
+      dependency_links=['https://github.com/Teriks/pyrogram/archive/master.zip#egg=pyrogram-1000.0'],
       entry_points={
           'console_scripts': [
               'tgminer = tgminer.tgminer:main',

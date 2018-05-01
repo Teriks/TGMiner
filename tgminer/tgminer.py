@@ -36,7 +36,7 @@ import pyrogram.session
 import whoosh.index
 from pyrogram.api import functions as api_functions
 from pyrogram.api import types as api_types
-from pyrogram.client import message_parser
+from pyrogram.client.utils import parse_message
 from slugify import slugify
 
 import tgminer.config
@@ -304,7 +304,7 @@ class TGMinerClient:
 
         if isinstance(update_message.media, api_types.MessageMediaPhoto):
 
-            parsed_message: pyrogram.Message = message_parser.parse_message(
+            parsed_message: pyrogram.Message = parse_message(
                 self._client,
                 update.message,
                 users,
@@ -319,7 +319,7 @@ class TGMinerClient:
 
         elif isinstance(update_message.media, api_types.MessageMediaDocument):
 
-            parsed_message: pyrogram.Message = message_parser.parse_message(
+            parsed_message: pyrogram.Message = parse_message(
                 self._client,
                 update.message,
                 users,
