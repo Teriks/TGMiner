@@ -93,5 +93,10 @@
 	   filename is not passed to the client.
 	*/
 
-	"docname_filter": ".*"
+	"docname_filter": ".*",
+
+    /*
+       Log active threads to stdout with each message update.
+    */
+	"log_update_threads": false
 }

@@ -260,6 +260,11 @@ class TGMinerClient:
 
         to_user = None
 
+        if self._config.log_update_threads:
+            print("Update thread: " + threading.current_thread().name)
+            print("Other threads: " +
+              (',\n' + ' ' * 15).join(x.name for x in threading.enumerate() if x.name != 'MainThread'))
+
         if is_peer_channel or is_peer_chat:
             channel = chats[update_message.to_id.channel_id] if is_peer_channel else chats[update_message.to_id.chat_id]
             to_id = channel.id

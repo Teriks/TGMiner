@@ -104,7 +104,8 @@ class TGMinerConfig:
             'log_group_chats': dschema.prop(default=True, type=bool),
 
             'download_workers': dschema.prop(default=4, type=workers_type),
-            'updates_workers': dschema.prop(default=1, type=workers_type)
+            'updates_workers': dschema.prop(default=1, type=workers_type),
+            'log_update_threads': dschema.prop(default=False, type=bool)
         })
 
         self._config = None
