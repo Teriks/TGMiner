@@ -23,6 +23,7 @@ import datetime
 import errno
 import json
 import mimetypes
+import pyrogram.api.types
 import os
 import sys
 import threading
@@ -35,8 +36,8 @@ import pyrogram
 import pyrogram.session
 import whoosh.index
 from pyrogram.api import functions as api_functions
-from pyrogram.api import types as api_types
-from pyrogram.client.utils import parse_message
+from pyrogram.client.types import messages_and_media
+from pyrogram.client.types import user_and_chats
 from slugify import slugify
 
 import tgminer.config
@@ -89,44 +90,61 @@ class TGMinerClient:
                 self._index = whoosh.index.open_dir(self._indexdir)
 
     @staticmethod
-    def _get_media_ext(message: api_types.Message):
-        if isinstance(message, api_types.Message):
-            media = message.media
-        else:
-            media = message
+    def _guess_extension(mime_type):
+        ext = mimetypes.guess_extension(mime_type)
+        if ext is None:
+            ext = '.' + mime_type.split('/', 1)[1]
+        return ext
 
-        if isinstance(media, api_types.MessageMediaDocument):
-            document = media.document
+    @staticmethod
+    def _get_media_ext(message: messages_and_media.Message):
 
-            if isinstance(document, api_types.Document):
-                extension = ('.txt' if document.mime_type == 'text/plain' else
-                             mimetypes.guess_extension(document.mime_type)
-                             if document.mime_type else '.unknown')
+        if message.document:
+            document: messages_and_media.document.Document = message.document
 
-                if extension is None:
-                    # mimetypes.guess_extension does not figure out webp for some reason
-                    return '.webp' if document.mime_type == 'image/webp' else '.none'
-                return extension
+            extension = ('.txt' if document.mime_type == 'text/plain' else
+                         TGMinerClient._guess_extension(document.mime_type)
+                         if document.mime_type else '.unknown')
 
-        elif isinstance(media, (api_types.MessageMediaPhoto, api_types.Photo)):
-            if isinstance(media, api_types.MessageMediaPhoto):
-                photo = media.photo
-            else:
-                photo = media
+            return extension
 
-            if isinstance(photo, api_types.Photo):
-                return '.jpg'
+        elif message.sticker:
+            sticker: messages_and_media.Sticker = message.sticker
+            return TGMinerClient._guess_extension(sticker.mime_type)
+
+        elif message.photo:
+            return '.jpg'
+
+        elif message.animation:
+            anim: messages_and_media.Animation = message.animation
+            return TGMinerClient._guess_extension(anim.mime_type)
+
+        elif message.video:
+            video: messages_and_media.Video = message.video
+            return TGMinerClient._guess_extension(video.mime_type)
+
+        elif message.voice:
+            voice: messages_and_media.Voice = message.voice
+            return TGMinerClient._guess_extension(voice.mime_type)
+
+        elif message.video_note:
+            video: messages_and_media.VideoNote = message.video_note
+            return TGMinerClient._guess_extension(video.mime_type)
+
+        elif message.audio:
+            audio: messages_and_media.Audio = message.audio
+            return TGMinerClient._guess_extension(audio.mime_type)
 
         return '.none'
 
     @staticmethod
-    def _get_user_alias(user: api_types.User):
+    def _get_user_alias(user: user_and_chats.user.User):
         if user.first_name:
             return f'{user.first_name} {user.last_name}'.rstrip() if user.last_name else user.first_name
         return None
 
     @staticmethod
-    def _get_log_username(user: api_types.User):
+    def _get_log_username(user: user_and_chats.user.User):
 
         user_id_part = f'[@{user.username}]' if user.username else ''
 
@@ -145,15 +163,15 @@ class TGMinerClient:
             return 'None'
 
     def _index_log_message(self,
-                           from_user: api_types.User,
-                           to_user: api_types.User,
+                           from_user: user_and_chats.user.User,
+                           to_user: user_and_chats.user.User,
                            to_id: int,
                            media_info: str,
                            message_text: str,
                            chat_slug: str):
 
-        # lock in process and multiprocess lock
         with self._index_lock, fasteners.InterProcessLock(self._index_lock_path):
+
             writer = self._index.writer()
 
             username = from_user.username
@@ -167,12 +185,15 @@ class TGMinerClient:
                 to_username = None
                 to_alias = None
 
-            writer.add_document(username=username, alias=alias,
-                                to_username=to_username, to_alias=to_alias,
-                                media=media_info, message=message_text,
-                                timestamp=datetime.datetime.now(),
-                                chat=chat_slug, to_id=str(to_id))
-            writer.commit()
+            try:
+                writer.add_document(username=username, alias=alias,
+                                    to_username=to_username, to_alias=to_alias,
+                                    media=media_info, message=message_text,
+                                    timestamp=datetime.datetime.now(),
+                                    chat=chat_slug, to_id=str(to_id))
+                writer.commit()
+            except Exception as e:
+                traceback.print_exc()
 
     def _timestamp(self):
         return self._config.timestamp_format.format(datetime.datetime.now())
@@ -228,26 +249,23 @@ class TGMinerClient:
 
     def _update_handler(self, client, update, users: dict, chats: dict):
 
-        if not isinstance(update, (api_types.UpdateNewChannelMessage, api_types.UpdateNewMessage)):
+        if not isinstance(update, messages_and_media.Message):
             return
 
-        update_message: api_types.Message = update.message
+        update_message: messages_and_media.Message = update
 
-        if not isinstance(update_message, api_types.Message):
-            return
-
-        is_peer_user = isinstance(update_message.to_id, api_types.PeerUser)
+        is_peer_user = update_message.chat.type == "private"
 
         if is_peer_user and not self._config.log_direct_chats:
             return
 
-        is_peer_channel = isinstance(update_message.to_id, api_types.PeerChannel)
-        is_peer_chat = isinstance(update_message.to_id, api_types.PeerChat)
+        is_peer_channel = update_message.chat.type == "supergroup"
+        is_peer_chat = update_message.chat.type == "group"
 
         if (is_peer_channel or is_peer_chat) and not self._config.log_group_chats:
             return
 
-        user: api_types.User = users[update_message.from_id]
+        user: user_and_chats.user.User = update_message.from_user
 
         user_name = user.username if user.username else ''
 
@@ -263,17 +281,17 @@ class TGMinerClient:
         if self._config.log_update_threads:
             print("Update thread: " + threading.current_thread().name)
             print("Other threads: " +
-              (',\n' + ' ' * 15).join(x.name for x in threading.enumerate() if x.name != 'MainThread'))
+                  (',\n' + ' ' * 15).join(x.name for x in threading.enumerate() if x.name != 'MainThread'))
 
         if is_peer_channel or is_peer_chat:
-            channel = chats[update_message.to_id.channel_id] if is_peer_channel else chats[update_message.to_id.chat_id]
+            channel: user_and_chats.Chat = update_message.chat
             to_id = channel.id
 
             chat_slug = slugify(channel.title)
 
             if self._filter_group_chat_check(title=channel.title,
                                              chat_slug=chat_slug,
-                                             chat_id=channel.id,
+                                             chat_id=to_id,
                                              username=user_name,
                                              user_alias=user_alias,
                                              user_id=user.id):
@@ -284,8 +302,9 @@ class TGMinerClient:
             log_name = chat_slug + '.log.txt'
 
         elif is_peer_user:
+            chat: user_and_chats.Chat = update_message.chat
 
-            to_user = users[update_message.to_id.user_id]
+            to_user = users[chat.id]
             to_id = to_user.id
 
             if self._filter_direct_chat_check(username=user_name,
@@ -306,39 +325,22 @@ class TGMinerClient:
             os.makedirs(log_folder, exist_ok=True)
 
         indexed_media_info = None
+        indexed_message = None
 
-        if isinstance(update_message.media, api_types.MessageMediaPhoto):
-
-            parsed_message: pyrogram.Message = parse_message(
-                self._client,
-                update.message,
-                users,
-                chats
-            )
-
-            indexed_media_info, indexed_message, short_log_entry = self._handle_photo_message(
+        if update_message.media:
+            result = self._handle_media_message(
                 log_folder,
                 log_user_name,
-                update_message,
-                parsed_message)
+                update_message)
 
-        elif isinstance(update_message.media, api_types.MessageMediaDocument):
-
-            parsed_message: pyrogram.Message = parse_message(
-                self._client,
-                update.message,
-                users,
-                chats
-            )
-
-            indexed_media_info, indexed_message, short_log_entry = self._handle_media_message(
-                log_folder,
-                log_user_name,
-                update_message,
-                parsed_message)
-
+            if result is not None:
+                (indexed_media_info, indexed_message, short_log_entry) = result
+            else:
+                return
         else:
-            indexed_message = update_message.message
+            if update_message.text:
+                indexed_message = str(update_message.text)
+
             short_log_entry = f'{log_user_name}: {indexed_message}'
 
         self._index_log_message(from_user=user,
@@ -360,34 +362,54 @@ class TGMinerClient:
             with open(os.path.join(log_folder, log_name), 'a', encoding='utf-8') as file_handle:
                 print(log_entry, file=file_handle)
 
-    def _handle_media_message(self,
+    def _handle_photo_message(self,
                               log_folder: str,
                               log_user_name: str,
-                              update_message: api_types.Message,
-                              parsed_message: pyrogram.Message):
+                              update_message: messages_and_media.Message):
+
+        if self._config.download_photos:
+
+            media_file_path = os.path.abspath(
+                os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
+
+            self._client.download_media(update_message, file_name=media_file_path, block=False)
+
+            indexed_media_info = f'(Photo: {media_file_path})'
+        else:
+            indexed_media_info = '(Photo: PHOTO DOWNLOADS DISABLED)'
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_document_message(self,
+                                 log_folder: str,
+                                 log_user_name: str,
+                                 update_message: messages_and_media.Message):
 
         doc_file_path = os.path.abspath(
             os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
 
-        indexed_message: str = update_message.message
+        indexed_message = str(update_message.caption) if update_message.caption else None
 
-        filename_attr = next(
-            (x for x in update_message.media.document.attributes
-             if isinstance(x, api_types.DocumentAttributeFilename)), None)
+        doc: messages_and_media.Document = update_message.document
 
-        og_file_name = filename_attr.file_name if filename_attr else ''
+        og_file_name = doc.file_name if doc.file_name else ''
 
         displayed_path = doc_file_path
 
         if self._config.download_documents and (not og_file_name or self._config.docname_filter.match(og_file_name)):
-            self._client.download_media(parsed_message, file_name=doc_file_path, block=False)
+            self._client.download_media(update_message, file_name=doc_file_path, block=False)
         elif not self._config.download_documents:
             displayed_path = "DOCUMENT DOWNLOADS DISABLED"
         else:
             displayed_path = "DOCNAME_FILTER DISCARDED FILE"
 
         indexed_media_info = '(Document: "{}"{}: {})'.format(
-            update_message.media.document.mime_type,
+            doc.mime_type,
             f' - "{og_file_name}"',
             displayed_path)
 
@@ -396,19 +418,230 @@ class TGMinerClient:
 
         return indexed_media_info, indexed_message, log_entry
 
+    def _handle_animation_message(self,
+                                  log_folder: str,
+                                  log_user_name: str,
+                                  update_message: messages_and_media.Message):
+
+        anim: messages_and_media.Animation = update_message.animation
+
+        anim_file_path = os.path.abspath(
+            os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
+
+        og_file_name = anim.file_name if anim.file_name else ''
+
+        displayed_path = anim_file_path
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        if self._config.download_animations:
+            self._client.download_media(update_message, file_name=anim_file_path, block=False)
+        else:
+            displayed_path = "ANIMATION DOWNLOADS DISABLED"
+
+        indexed_media_info = '(Animation: "{}"{}: {})'.format(
+            anim.mime_type,
+            f' - "{og_file_name}"',
+            displayed_path)
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_video_message(self,
+                              log_folder: str,
+                              log_user_name: str,
+                              update_message: messages_and_media.Message):
+
+        video: messages_and_media.Video = update_message.video
+
+        video_file_path = os.path.abspath(
+            os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
+
+        og_file_name = video.file_name if video.file_name else ''
+
+        displayed_path = video_file_path
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        if self._config.download_videos:
+            self._client.download_media(update_message, file_name=video_file_path, block=False)
+        else:
+            displayed_path = "VIDEO DOWNLOADS DISABLED"
+
+        indexed_media_info = '(Video: "{}"{}: {})'.format(
+            video.mime_type,
+            f' - "{og_file_name}"',
+            displayed_path)
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_video_note_message(self,
+                              log_folder: str,
+                              log_user_name: str,
+                              update_message: messages_and_media.Message):
+
+        video_note: messages_and_media.VideoNote = update_message.video_note
+
+        video_file_path = os.path.abspath(
+            os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
+
+        displayed_path = video_file_path
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        if self._config.download_video_notes:
+            self._client.download_media(update_message, file_name=video_file_path, block=False)
+        else:
+            displayed_path = "VIDEO NOTE DOWNLOADS DISABLED"
+
+        indexed_media_info = '(VideoNote: "{}": {})'.format(
+            video_note.mime_type,
+            displayed_path)
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_sticker_message(self,
+                                   log_folder: str,
+                                   log_user_name: str,
+                                   update_message: messages_and_media.Message):
+
+        sticker: messages_and_media.Sticker = update_message.sticker
+
+        sticker_file_path = os.path.abspath(
+            os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
+
+        og_file_name = sticker.file_name if sticker.file_name else ''
+
+        displayed_path = sticker_file_path
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        if self._config.download_stickers:
+            self._client.download_media(update_message, file_name=sticker_file_path, block=False)
+        else:
+            displayed_path = "STICKER DOWNLOADS DISABLED"
+
+        indexed_media_info = '(Sticker: "{}"{}: {})'.format(
+            sticker.mime_type,
+            f' - "{og_file_name}"',
+            displayed_path)
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_voice_message(self,
+                              log_folder: str,
+                              log_user_name: str,
+                              update_message: messages_and_media.Message):
+
+        voice: messages_and_media.Voice = update_message.voice
+
+        ext = self._get_media_ext(update_message)
+
+        voice_file_path = os.path.abspath(
+            os.path.join(log_folder, str(uuid.uuid4())) + ext)
+
+        displayed_path = voice_file_path
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        if self._config.download_voice:
+            self._client.download_media(update_message, file_name=voice_file_path, block=False)
+        else:
+            displayed_path = "VOICE DOWNLOADS DISABLED"
+
+        indexed_media_info = '(Voice: "{}": {})'.format(
+            voice.mime_type,
+            displayed_path)
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_audio_message(self,
+                              log_folder: str,
+                              log_user_name: str,
+                              update_message: messages_and_media.Message):
+
+        audio: messages_and_media.Audio = update_message.audio
+
+        audio_file_path = os.path.abspath(
+            os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
+
+        og_file_name = audio.file_name if audio.file_name else ''
+
+        displayed_path = audio_file_path
+
+        indexed_message = str(update_message.caption) if update_message.caption else None
+
+        if self._config.download_audio:
+            self._client.download_media(update_message, file_name=audio_file_path, block=False)
+        else:
+            displayed_path = "AUDIO DOWNLOADS DISABLED"
+
+        indexed_media_info = '(Audio: "{}"{}: {})'.format(
+            audio.mime_type,
+            f' - "{og_file_name}"',
+            displayed_path)
+
+        log_entry = (f'{log_user_name}: {indexed_media_info}' +
+                     (f' Caption: {indexed_message}' if indexed_message else ''))
+
+        return indexed_media_info, indexed_message, log_entry
+
+    def _handle_media_message(self,
+                              log_folder: str,
+                              log_user_name: str,
+                              update_message: messages_and_media.Message):
+
+        if update_message.document:
+            return self._handle_document_message(log_folder, log_user_name, update_message)
+        elif update_message.photo:
+            return self._handle_photo_message(log_folder, log_user_name, update_message)
+        elif update_message.sticker:
+            return self._handle_sticker_message(log_folder, log_user_name, update_message)
+        elif update_message.animation:
+            return self._handle_animation_message(log_folder, log_user_name, update_message)
+        elif update_message.video:
+            return self._handle_video_message(log_folder, log_user_name, update_message)
+        elif update_message.video_note:
+            return self._handle_video_note_message(log_folder, log_user_name, update_message)
+        elif update_message.voice:
+            return self._handle_voice_message(log_folder, log_user_name, update_message)
+        elif update_message.audio:
+            return self._handle_audio_message(log_folder, log_user_name, update_message)
+
     def get_chats_info(self) -> list:
+
+        x = self._client.channels_pts
+
         r = self._client.send(api_functions.messages.GetAllChats([]))
 
         data = []
 
         for i in r.chats:
+            if type(i) is pyrogram.api.types.Channel:
+                id = int("-100"+str(i.id))
+            else:
+                id = -i.id
 
-            storage = os.path.abspath(os.path.join(self._config.data_dir, self.CHANNELS_DIR_NAME, str(i.id)))
+            storage = os.path.abspath(os.path.join(self._config.data_dir, self.CHANNELS_DIR_NAME, str(id)))
             if not os.path.isdir(storage):
                 storage = None
 
             data.append(OrderedDict([('type', type(i).__name__),
-                                     ('id', i.id),
+                                     ('id', id),
                                      ('title', i.title),
                                      ('slug', slugify(i.title)),
                                      ('storage', storage)]))
@@ -441,30 +674,6 @@ class TGMinerClient:
 
     def dump_chats_and_peers_info(self, file):
         enc_print(json.dumps(self.get_chats_info() + self.get_peers_info(), indent=4, sort_keys=False), file=file)
-
-    def _handle_photo_message(self,
-                              log_folder: str,
-                              log_user_name: str,
-                              update_message: api_types.Message,
-                              parsed_message: pyrogram.Message):
-
-        if self._config.download_photos:
-
-            media_file_path = os.path.abspath(
-                os.path.join(log_folder, str(uuid.uuid4())) + self._get_media_ext(update_message))
-
-            self._client.download_media(parsed_message, file_name=media_file_path, block=False)
-
-            indexed_media_info = f'(Photo: {media_file_path})'
-        else:
-            indexed_media_info = '(Photo: PHOTO DOWNLOADS DISABLED)'
-
-        indexed_message = update_message.message
-
-        log_entry = (f'{log_user_name}: {indexed_media_info}' +
-                     (f' Caption: {update_message.message}' if update_message.message else ''))
-
-        return indexed_media_info, indexed_message, log_entry
 
     def start(self):
         self._client.start()

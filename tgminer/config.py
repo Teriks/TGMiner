@@ -96,6 +96,18 @@ class TGMinerConfig:
 
             'download_documents': dschema.prop(default=True, type=bool),
 
+            'download_stickers': dschema.prop(default=True, type=bool),
+
+            'download_animations': dschema.prop(default=True, type=bool),
+
+            'download_videos': dschema.prop(default=True, type=bool),
+
+            'download_video_notes': dschema.prop(default=True, type=bool),
+
+            'download_voice': dschema.prop(default=True, type=bool),
+
+            'download_audio': dschema.prop(default=True, type=bool),
+
             'write_raw_logs': dschema.prop(default=True, type=bool),
 
             'docname_filter': dschema.prop(default='.*', type=regex_type),

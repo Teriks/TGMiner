@@ -55,14 +55,14 @@ or because there has been no activity in that chat since TGMiner was first start
     [
         {
             "type": "Chat",
-            "id": 123456789,
+            "id": -123456789,
             "title": "Chat Title (And maybe funny special characters)",
             "slug": "chat-title",
             "storage": "data_dir/channels/123456789"
         },
         {
             "type": "Channel",
-            "id": 987654321,
+            "id": -1009876543210,
             "title": "Channel Title (And maybe funny special characters)",
             "slug": "channel-title",
             "storage": "data_dir/channels/987654321"
@@ -106,14 +106,14 @@ Example:
     [
         {
             "type": "Chat",
-            "id": 123456789,
+            "id": -123456789,
             "title": "Chat Title (And maybe funny special characters)",
             "slug": "chat-title",
             "storage": "data_dir/channels/123456789"
         },
         {
             "type": "Channel",
-            "id": 987654321,
+            "id": -1001234567890,
             "title": "Channel Title (And maybe funny special characters)",
             "slug": "channel-title",
             "storage": "data_dir/channels/987654321"
@@ -216,6 +216,62 @@ Query Examples:
     tgminer-search "media:Photo alias:'Firstname Lastname'"
 
     tgminer-search "media:Photo alias:FirstnameNoLastname"
+
+    # search animations/gifs from @someones_username or alias
+
+    tgminer-search "media:Animation username:someones_username"
+
+    tgminer-search "media:Animation alias:'Firstname Lastname'"
+
+    tgminer-search "media:Animation alias:FirstnameNoLastname"
+
+    # search stickers from @someones_username or alias
+
+    tgminer-search "media:Sticker username:someones_username"
+
+    tgminer-search "media:Sticker alias:'Firstname Lastname'"
+
+    tgminer-search "media:Sticker alias:FirstnameNoLastname"
+
+    # search videos from @someones_username or alias
+
+    tgminer-search "media:Video username:someones_username"
+
+    tgminer-search "media:Video alias:'Firstname Lastname'"
+
+    tgminer-search "media:Video alias:FirstnameNoLastname"
+
+    # search video notes from @someones_username or alias
+
+    tgminer-search "media:VideoNote username:someones_username"
+
+    tgminer-search "media:VideoNote alias:'Firstname Lastname'"
+
+    tgminer-search "media:VideoNote alias:FirstnameNoLastname"
+
+    # search voice messages from @someones_username or alias
+
+    tgminer-search "media:Voice username:someones_username"
+
+    tgminer-search "media:Voice alias:'Firstname Lastname'"
+
+    tgminer-search "media:Voice alias:FirstnameNoLastname"
+
+    # search audio files from @someones_username or alias
+
+    tgminer-search "media:Audio username:someones_username"
+
+    tgminer-search "media:Audio alias:'Firstname Lastname'"
+
+    tgminer-search "media:Audio alias:FirstnameNoLastname"
+
+    # search stickers from @someones_username or alias
+
+    tgminer-search "media:Sticker username:someones_username"
+
+    tgminer-search "media:Sticker alias:'Firstname Lastname'"
+
+    tgminer-search "media:Sticker alias:FirstnameNoLastname"
 
     # search documents from @someones_username or alias
 

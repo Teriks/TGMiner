@@ -82,10 +82,34 @@
 
 	"download_photos": true,
 
-
 	/* Should document/file attachments be downloaded? */
 
 	"download_documents": true,
+
+	/* Should stickers be downloaded? */
+
+    "download_stickers": true,
+
+	/* Should animations be downloaded? */
+
+	"download_animations": true,
+
+
+	/* Should videos be downloaded? */
+
+    "download_videos": true,
+
+	/* Should video notes be downloaded? */
+
+    "download_video_notes": true,
+
+	/* Should voice messages be downloaded? */
+
+    "download_voice": true,
+
+    /* Should audio messages be downloaded? */
+
+    "download_audio": true,
 
 	/*
 	   Only download document attachments who's names match this regex,

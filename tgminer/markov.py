@@ -1,5 +1,4 @@
 import argparse
-import random
 
 import kovit
 
@@ -75,10 +74,17 @@ def main():
 
     attempts = 0
 
+    def start_chooser():
+        return m_chain.random_start(dead_end_ok=False)
+
+    def next_chooser(bag):
+        return bag.choose()
+
     while True:
 
         message = ' '.join(m_chain.walk(args.max_words, repeat=args.repeat,
-                                        start_chooser=lambda: m_chain.random_start(dead_end_ok=False)))
+                                        start_chooser=start_chooser,
+                                        next_chooser=next_chooser))
 
         if message:
             break

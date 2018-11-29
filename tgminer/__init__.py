@@ -21,4 +21,4 @@
 __author__ = 'Teriks'
 __copyright__ = 'Copyright (c) 2018 Teriks'
 __license__ = 'Three Clause BSD'
-__version__ = '0.3.4.0a1'
+__version__ = '0.4.0.0a1'
