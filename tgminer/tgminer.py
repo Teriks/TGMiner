@@ -340,6 +340,8 @@ class TGMinerClient:
         else:
             if update_message.text:
                 indexed_message = str(update_message.text)
+            else:
+                return
 
             short_log_entry = f'{log_user_name}: {indexed_message}'
 
@@ -624,24 +626,22 @@ class TGMinerClient:
 
     def get_chats_info(self) -> list:
 
-        x = self._client.channels_pts
-
         r = self._client.send(api_functions.messages.GetAllChats([]))
 
         data = []
 
         for i in r.chats:
             if type(i) is pyrogram.api.types.Channel:
-                id = int("-100"+str(i.id))
+                chat_id = int("-100"+str(i.id))
             else:
-                id = -i.id
+                chat_id = -i.id
 
-            storage = os.path.abspath(os.path.join(self._config.data_dir, self.CHANNELS_DIR_NAME, str(id)))
+            storage = os.path.abspath(os.path.join(self._config.data_dir, self.CHANNELS_DIR_NAME, str(chat_id)))
             if not os.path.isdir(storage):
                 storage = None
 
             data.append(OrderedDict([('type', type(i).__name__),
-                                     ('id', id),
+                                     ('id', chat_id),
                                      ('title', i.title),
                                      ('slug', slugify(i.title)),
                                      ('storage', storage)]))
